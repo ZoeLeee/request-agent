@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-
+import { createRoot } from "react-dom/client"
 import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
@@ -19,22 +19,23 @@ interface Rule {
   response: string
 }
 
-function Popup() {
+function App() {
   const [requests, setRequests] = useState<RequestInfo[]>([])
-  const [selectedRequest, setSelectedRequest] = useState<RequestInfo | null>(
-    null
-  )
+  const [selectedRequest, setSelectedRequest] = useState<RequestInfo | null>(null)
   const [rules, setRules] = useState<Rule[]>([])
   const [newRule, setNewRule] = useState<Rule>({
     id: "",
     url: "",
     matchType: "exact",
-    response: ""
+    response: "",
   })
 
   useEffect(() => {
     // 获取当前标签页的请求
-    chrome.runtime.sendMessage({ name: "getRequests" }, (response) => {
+    sendToBackground({
+      name:"getRequests"
+    }).then((response) => {
+      console.log('response: ', response);
       setRequests(response)
     })
 
@@ -43,13 +44,14 @@ function Popup() {
       setRules(storedRules)
     })
 
-    // 打开新窗口
-    chrome.windows.create({
-      url: chrome.runtime.getURL("tabs/index.html"),
-      type: "popup",
-      width: 800,
-      height: 600
-    })
+    // 定时刷新请求列表
+    const interval = setInterval(() => {
+      chrome.runtime.sendMessage({ name: "getRequests" }, (response) => {
+        setRequests(response)
+      })
+    }, 5000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const handleClearRequests = async () => {
@@ -59,6 +61,12 @@ function Popup() {
 
   const handleRequestClick = (request: RequestInfo) => {
     setSelectedRequest(request)
+    setNewRule({
+      id: "",
+      url: request.url,
+      matchType: "exact",
+      response: "",
+    })
   }
 
   const handleRuleSave = async () => {
@@ -75,28 +83,23 @@ function Popup() {
   }
 
   return (
-    <div style={{ padding: 16, width: 400 }}>
+    <div>
       <h1>Request Interceptor</h1>
       <button onClick={handleClearRequests}>Clear Requests</button>
       <h2>Requests</h2>
       <ul>
         {requests.map((req) => (
-          <li
-            key={req.id}
-            onClick={() => handleRequestClick(req)}
-            style={{ cursor: "pointer" }}>
+          <li key={req.id} onClick={() => handleRequestClick(req)}>
             {req.method} {req.url}
           </li>
         ))}
       </ul>
       {selectedRequest && (
-        <div>
+        <div className="details">
           <h2>Request Details</h2>
           <p>URL: {selectedRequest.url}</p>
           <p>Method: {selectedRequest.method}</p>
-          <p>
-            Timestamp: {new Date(selectedRequest.timeStamp).toLocaleString()}
-          </p>
+          <p>Timestamp: {new Date(selectedRequest.timeStamp).toLocaleString()}</p>
           <h3>Edit Rule</h3>
           <div>
             <label>URL Pattern:</label>
@@ -111,11 +114,9 @@ function Popup() {
             <select
               value={newRule.matchType}
               onChange={(e) =>
-                setNewRule({
-                  ...newRule,
-                  matchType: e.target.value as "exact" | "contains" | "regex"
-                })
-              }>
+                setNewRule({ ...newRule, matchType: e.target.value as "exact" | "contains" | "regex" })
+              }
+            >
               <option value="exact">Exact</option>
               <option value="contains">Contains</option>
               <option value="regex">Regex</option>
@@ -125,9 +126,7 @@ function Popup() {
             <label>Custom Response (JSON):</label>
             <textarea
               value={newRule.response}
-              onChange={(e) =>
-                setNewRule({ ...newRule, response: e.target.value })
-              }
+              onChange={(e) => setNewRule({ ...newRule, response: e.target.value })}
             />
           </div>
           <button onClick={handleRuleSave}>Save Rule</button>
@@ -137,5 +136,4 @@ function Popup() {
   )
 }
 
-
-export default Popup
+export default App
