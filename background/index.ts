@@ -80,13 +80,36 @@ chrome.webRequest.onBeforeRequest.addListener(
   { urls: ["<all_urls>"] }
 )
 
-// 监听扩展图标点击事件，打开新窗口
+// 监听扩展图标点击事件，打开新窗口或聚焦到已打开的窗口
 chrome.action.onClicked.addListener(() => {
-  // 创建全屏窗口
-  chrome.windows.create({
-    url: chrome.runtime.getURL("tabs/index.html"),
-    type: "popup",
-    state: "maximized"  // 设置窗口为最大化状态
+  const targetUrl = chrome.runtime.getURL("tabs/index.html");
+  
+  // 查找是否已经有打开的窗口
+  chrome.windows.getAll({ populate: true }, (windows) => {
+    // 查找包含目标URL的窗口
+    const existingWindow = windows.find(window => 
+      window.tabs && window.tabs.some(tab => tab.url === targetUrl)
+    );
+    
+    if (existingWindow && existingWindow.id) {
+      // 如果找到已打开的窗口，则聚焦并激活该窗口
+      chrome.windows.update(existingWindow.id, { focused: true }, () => {
+        // 找到并激活对应的标签页
+        if (existingWindow.tabs) {
+          const targetTab = existingWindow.tabs.find(tab => tab.url === targetUrl);
+          if (targetTab && targetTab.id) {
+            chrome.tabs.update(targetTab.id, { active: true });
+          }
+        }
+      });
+    } else {
+      // 如果没有找到已打开的窗口，则创建新窗口
+      chrome.windows.create({
+        url: targetUrl,
+        type: "popup",
+        state: "maximized"  // 设置窗口为最大化状态
+      });
+    }
   });
 })
 
