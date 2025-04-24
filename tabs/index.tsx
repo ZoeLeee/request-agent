@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+
 import "./index.css"
 
 import { sendToBackground } from "@plasmohq/messaging"
@@ -213,191 +214,187 @@ function App() {
         </table>
       </div>
       {selectedRequest && (
-          <>
-            <div className="resizer" onMouseDown={handleResizerMouseDown}></div>
-            <div
-              className="details-panel"
-              style={{ height: `${detailsHeight}px` }}>
-              <div className="details-tabs">
-                <div
-                  className={`details-tab ${activeTab === "headers" ? "active" : ""}`}
-                  onClick={() => setActiveTab("headers")}>
-                  标头
-                </div>
-                <div
-                  className={`details-tab ${activeTab === "response" ? "active" : ""}`}
-                  onClick={() => setActiveTab("response")}>
-                  响应
-                </div>
-                <div
-                  className={`details-tab ${activeTab === "timing" ? "active" : ""}`}
-                  onClick={() => setActiveTab("timing")}>
-                  时间
-                </div>
-                <div
-                  className={`details-tab ${activeTab === "rule" ? "active" : ""}`}
-                  onClick={() => setActiveTab("rule")}>
-                  规则编辑
-                </div>
+        <div className="fixed right-0 top-0 w-1/2 h-full">
+          <div className="resizer" onMouseDown={handleResizerMouseDown}></div>
+          <div className="details-panel h-full">
+            <div className="details-tabs">
+              <div
+                className={`details-tab ${activeTab === "headers" ? "active" : ""}`}
+                onClick={() => setActiveTab("headers")}>
+                标头
               </div>
-
-              <div className="details-content">
-                {activeTab === "headers" && (
-                  <div>
-                    <h3>常规</h3>
-                    <table>
-                      <tbody>
-                        <tr>
-                          <th>请求 URL</th>
-                          <td>{selectedRequest.url}</td>
-                        </tr>
-                        <tr>
-                          <th>请求方法</th>
-                          <td>{selectedRequest.method}</td>
-                        </tr>
-                        <tr>
-                          <th>状态码</th>
-                          <td>200 OK</td>
-                        </tr>
-                        <tr>
-                          <th>远程地址</th>
-                          <td>{getDomain(selectedRequest.url)}</td>
-                        </tr>
-                        <tr>
-                          <th>引用者策略</th>
-                          <td>strict-origin-when-cross-origin</td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    <h3>响应标头</h3>
-                    <table>
-                      <tbody>
-                        <tr>
-                          <th>content-type</th>
-                          <td>application/json</td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    <h3>请求标头</h3>
-                    <table>
-                      <tbody>
-                        <tr>
-                          <th>user-agent</th>
-                          <td>
-                            Mozilla/5.0 (Windows NT 10.0; Win64; x64)
-                            AppleWebKit/537.36 (KHTML, like Gecko)
-                            Chrome/91.0.4472.124 Safari/537.36
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {activeTab === "response" && (
-                  <div>
-                    <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                      {/* 这里可以显示响应内容，目前使用占位符 */}
-                      {"响应内容将显示在这里"}
-                    </pre>
-                  </div>
-                )}
-
-                {activeTab === "timing" && (
-                  <div>
-                    <div className="timeline-container">
-                      <div
-                        className="timeline-bar"
-                        style={{ width: "60%", left: "10%" }}></div>
-                    </div>
-                    <table>
-                      <tbody>
-                        <tr>
-                          <th>开始时间</th>
-                          <td>
-                            {new Date(
-                              selectedRequest.timeStamp
-                            ).toLocaleString()}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {activeTab === "rule" && (
-                  <div>
-                    <h3>编辑拦截规则</h3>
-                    <div style={{ marginBottom: "10px" }}>
-                      <label style={{ display: "block", marginBottom: "5px" }}>
-                        URL 模式:
-                      </label>
-                      <input
-                        type="text"
-                        style={{ width: "100%", padding: "5px" }}
-                        value={newRule.url}
-                        onChange={(e) =>
-                          setNewRule({ ...newRule, url: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div style={{ marginBottom: "10px" }}>
-                      <label style={{ display: "block", marginBottom: "5px" }}>
-                        匹配类型:
-                      </label>
-                      <select
-                        style={{ width: "100%", padding: "5px" }}
-                        value={newRule.matchType}
-                        onChange={(e) =>
-                          setNewRule({
-                            ...newRule,
-                            matchType: e.target.value as
-                              | "exact"
-                              | "contains"
-                              | "regex"
-                          })
-                        }>
-                        <option value="exact">精确匹配</option>
-                        <option value="contains">包含</option>
-                        <option value="regex">正则表达式</option>
-                      </select>
-                    </div>
-                    <div style={{ marginBottom: "10px" }}>
-                      <label style={{ display: "block", marginBottom: "5px" }}>
-                        自定义响应 (JSON):
-                      </label>
-                      <textarea
-                        style={{
-                          width: "100%",
-                          height: "100px",
-                          padding: "5px"
-                        }}
-                        value={newRule.response}
-                        onChange={(e) =>
-                          setNewRule({ ...newRule, response: e.target.value })
-                        }
-                      />
-                    </div>
-                    <button
-                      style={{
-                        padding: "5px 10px",
-                        backgroundColor: "#4285f4",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "3px",
-                        cursor: "pointer"
-                      }}
-                      onClick={handleRuleSave}>
-                      保存规则
-                    </button>
-                  </div>
-                )}
+              <div
+                className={`details-tab ${activeTab === "response" ? "active" : ""}`}
+                onClick={() => setActiveTab("response")}>
+                响应
+              </div>
+              <div
+                className={`details-tab ${activeTab === "timing" ? "active" : ""}`}
+                onClick={() => setActiveTab("timing")}>
+                时间
+              </div>
+              <div
+                className={`details-tab ${activeTab === "rule" ? "active" : ""}`}
+                onClick={() => setActiveTab("rule")}>
+                规则编辑
               </div>
             </div>
-          </>
-        )}
+
+            <div className="details-content">
+              {activeTab === "headers" && (
+                <div>
+                  <h3>常规</h3>
+                  <table>
+                    <tbody>
+                      <tr>
+                        <th>请求 URL</th>
+                        <td>{selectedRequest.url}</td>
+                      </tr>
+                      <tr>
+                        <th>请求方法</th>
+                        <td>{selectedRequest.method}</td>
+                      </tr>
+                      <tr>
+                        <th>状态码</th>
+                        <td>200 OK</td>
+                      </tr>
+                      <tr>
+                        <th>远程地址</th>
+                        <td>{getDomain(selectedRequest.url)}</td>
+                      </tr>
+                      <tr>
+                        <th>引用者策略</th>
+                        <td>strict-origin-when-cross-origin</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <h3>响应标头</h3>
+                  <table>
+                    <tbody>
+                      <tr>
+                        <th>content-type</th>
+                        <td>application/json</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <h3>请求标头</h3>
+                  <table>
+                    <tbody>
+                      <tr>
+                        <th>user-agent</th>
+                        <td>
+                          Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+                          AppleWebKit/537.36 (KHTML, like Gecko)
+                          Chrome/91.0.4472.124 Safari/537.36
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {activeTab === "response" && (
+                <div>
+                  <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                    {/* 这里可以显示响应内容，目前使用占位符 */}
+                    {"响应内容将显示在这里"}
+                  </pre>
+                </div>
+              )}
+
+              {activeTab === "timing" && (
+                <div>
+                  <div className="timeline-container">
+                    <div
+                      className="timeline-bar"
+                      style={{ width: "60%", left: "10%" }}></div>
+                  </div>
+                  <table>
+                    <tbody>
+                      <tr>
+                        <th>开始时间</th>
+                        <td>
+                          {new Date(selectedRequest.timeStamp).toLocaleString()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {activeTab === "rule" && (
+                <div>
+                  <h3>编辑拦截规则</h3>
+                  <div style={{ marginBottom: "10px" }}>
+                    <label style={{ display: "block", marginBottom: "5px" }}>
+                      URL 模式:
+                    </label>
+                    <input
+                      type="text"
+                      style={{ width: "100%", padding: "5px" }}
+                      value={newRule.url}
+                      onChange={(e) =>
+                        setNewRule({ ...newRule, url: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div style={{ marginBottom: "10px" }}>
+                    <label style={{ display: "block", marginBottom: "5px" }}>
+                      匹配类型:
+                    </label>
+                    <select
+                      style={{ width: "100%", padding: "5px" }}
+                      value={newRule.matchType}
+                      onChange={(e) =>
+                        setNewRule({
+                          ...newRule,
+                          matchType: e.target.value as
+                            | "exact"
+                            | "contains"
+                            | "regex"
+                        })
+                      }>
+                      <option value="exact">精确匹配</option>
+                      <option value="contains">包含</option>
+                      <option value="regex">正则表达式</option>
+                    </select>
+                  </div>
+                  <div style={{ marginBottom: "10px" }}>
+                    <label style={{ display: "block", marginBottom: "5px" }}>
+                      自定义响应 (JSON):
+                    </label>
+                    <textarea
+                      style={{
+                        width: "100%",
+                        height: "100px",
+                        padding: "5px"
+                      }}
+                      value={newRule.response}
+                      onChange={(e) =>
+                        setNewRule({ ...newRule, response: e.target.value })
+                      }
+                    />
+                  </div>
+                  <button
+                    style={{
+                      padding: "5px 10px",
+                      backgroundColor: "#4285f4",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "3px",
+                      cursor: "pointer"
+                    }}
+                    onClick={handleRuleSave}>
+                    保存规则
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
