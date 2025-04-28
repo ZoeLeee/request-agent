@@ -144,8 +144,10 @@ chrome.tabs.onCreated.addListener((tab) => {
 // 监听标签页更新事件
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete" && tab.id) {
-    console.log('tab.id: ', tab.id);
-    attachDebugger(tab.id)
+    // 等待一小段时间再连接，确保页面已完全加载
+    setTimeout(() => {
+      attachDebugger(tab.id)
+    }, 500)
   }
 })
 
@@ -162,6 +164,13 @@ async function attachDebugger(tabId: number) {
   }
   
   try {
+    // 先尝试断开现有连接，防止冲突
+    try {
+      await chrome.debugger.detach({ tabId })
+    } catch (e) {
+      // 忽略错误，可能本来就没有连接
+    }
+    
     // 连接到 debugger
     await chrome.debugger.attach({ tabId }, "1.3")
     console.log(`成功连接到 debugger: tabId=${tabId}`)
@@ -174,15 +183,13 @@ async function attachDebugger(tabId: number) {
     
     // 启用网络事件
     await chrome.debugger.sendCommand({ tabId }, "Network.enable")
+    console.log(`已启用 Network 域: tabId=${tabId}`)
     
     // 启用 Fetch 域，允许拦截请求
     await chrome.debugger.sendCommand({ tabId }, "Fetch.enable", {
       patterns: [{ urlPattern: "*" }]
-    }).catch(err => {
-      console.error(`启用 Fetch 域失败: tabId=${tabId}`, err)
     })
-    
-    console.log(`已启用 Network 和 Fetch 域: tabId=${tabId}`)
+    console.log(`已启用 Fetch 域: tabId=${tabId}`)
     
     // 监听请求发送事件
     chrome.debugger.onEvent.addListener(handleDebuggerEvent)
@@ -233,26 +240,15 @@ async function handleDebuggerEvent(
         console.log(`找到匹配的规则，拦截请求: ${request.url}`)
         
         // 准备响应头
-        const headers = [
+        const responseHeaders = [
           { name: "Content-Type", value: "application/json" },
-          { name: "Access-Control-Allow-Origin", value: "*" }
+          { name: "Access-Control-Allow-Origin", value: "*" },
+          { name: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS" },
+          { name: "Access-Control-Allow-Headers", value: "Content-Type, Authorization" },
+          { name: "Cache-Control", value: "no-cache, no-store, must-revalidate" }
         ]
         
-        // 使用自定义响应完成请求
-        await chrome.debugger.sendCommand(
-          { tabId },
-          "Fetch.fulfillRequest",
-          {
-            requestId,
-            responseCode: 200,
-            responseHeaders: headers,
-            body: btoa(unescape(encodeURIComponent(matchedRule.response))) // Base64 编码，处理中文
-          }
-        )
-        
-        console.log(`成功拦截并修改响应: ${requestId}`)
-        
-        // 将请求信息存储到请求数组中
+        // 记录请求信息
         const requestInfo: RequestInfo = {
           id: requestId,
           url: request.url,
@@ -276,28 +272,45 @@ async function handleDebuggerEvent(
         // 将请求信息添加到请求数组中
         requests.push(requestInfo)
         
+        // 使用简单的纯文本响应
+        await chrome.debugger.sendCommand(
+          { tabId },
+          "Fetch.fulfillRequest",
+          {
+            requestId,
+            responseCode: 200,
+            responseHeaders: responseHeaders,
+            body: btoa(matchedRule.response) // 简单的 Base64 编码
+          }
+        )
+        
+        console.log(`成功拦截并修改响应: ${requestId}`)
         return
       } catch (error) {
         console.error(`拦截响应失败: ${requestId}`, error)
         
         // 如果拦截失败，继续请求
+        try {
+          await chrome.debugger.sendCommand(
+            { tabId },
+            "Fetch.continueRequest",
+            { requestId }
+          )
+        } catch (continueError) {
+          console.error(`继续请求失败: ${requestId}`, continueError)
+        }
+      }
+    } else {
+      // 如果没有匹配的规则，继续请求
+      try {
         await chrome.debugger.sendCommand(
           { tabId },
           "Fetch.continueRequest",
           { requestId }
-        ).catch(err => {
-          console.error(`继续请求失败: ${requestId}`, err)
-        })
-      }
-    } else {
-      // 如果没有匹配的规则，继续请求
-      await chrome.debugger.sendCommand(
-        { tabId },
-        "Fetch.continueRequest",
-        { requestId }
-      ).catch(err => {
+        )
+      } catch (err) {
         console.error(`继续请求失败: ${requestId}`, err)
-      })
+      }
     }
   }
   

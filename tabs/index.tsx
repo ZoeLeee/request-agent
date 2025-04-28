@@ -124,12 +124,28 @@ function App() {
 
   const handleRuleSave = async () => {
     const updatedRules = [...rules]
-    const existingRuleIndex = rules.findIndex((rule) => rule.id === newRule.id)
+    
+    // 首先检查是否有 ID 匹配
+    let existingRuleIndex = rules.findIndex((rule) => rule.id === newRule.id)
+    
+    // 如果没有 ID 匹配，则检查 URL 和 matchType 是否相同
+    if (existingRuleIndex < 0) {
+      existingRuleIndex = rules.findIndex(
+        (rule) => rule.url === newRule.url && rule.matchType === newRule.matchType
+      )
+    }
+    
     if (existingRuleIndex >= 0) {
-      updatedRules[existingRuleIndex] = newRule
+      // 替换现有规则，但保留原来的 ID
+      updatedRules[existingRuleIndex] = { 
+        ...newRule, 
+        id: rules[existingRuleIndex].id 
+      }
     } else {
+      // 添加新规则
       updatedRules.push({ ...newRule, id: Date.now().toString() })
     }
+    
     await storage.set("rules", updatedRules)
     setRules(updatedRules)
     setNewRule({ id: "", url: "", matchType: "exact", response: "" })
