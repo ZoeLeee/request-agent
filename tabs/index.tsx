@@ -34,6 +34,19 @@ interface RequestInfo {
   frameId: number
   parentFrameId: number
   initiator?: string
+  // 请求头字段
+  requestHeaders?: {[key: string]: string}
+  // 响应相关字段
+  responseStatus?: number
+  responseStatusText?: string
+  responseHeaders?: {[key: string]: string}
+  responseContent?: string
+  responseTime?: number
+  responseSize?: number
+  responseType?: string
+  // 自定义响应字段
+  shouldIntercept?: boolean
+  customResponse?: string
 }
 
 interface Rule {
@@ -48,6 +61,7 @@ function App() {
   const [selectedRequest, setSelectedRequest] = useState<RequestInfo | null>(
     null
   )
+  const [responseContent, setResponseContent] = useState<string>("")  // 添加响应内容状态
   const [rules, setRules] = useState<Rule[]>([])
   const [newRule, setNewRule] = useState<Rule>({
     id: "",
@@ -67,6 +81,11 @@ function App() {
       console.log("response: ", response)
       setRequests(response)
     })
+    
+    // 当切换到响应标签时，尝试获取响应内容
+    if (activeTab === "response" && selectedRequest) {
+      fetchResponseContent(selectedRequest.url)
+    }
 
     // 获取存储的规则
     storage.get<Rule[]>("rules").then((storedRules = []) => {
@@ -83,7 +102,7 @@ function App() {
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [activeTab, selectedRequest])
 
   const handleClearRequests = async () => {
     await sendToBackground({ name: "clearRequests" } as any)
@@ -99,6 +118,8 @@ function App() {
       matchType: "exact",
       response: ""
     })
+    // 获取响应内容
+    fetchResponseContent(request.url)
   }
 
   const handleRuleSave = async () => {
@@ -144,6 +165,111 @@ function App() {
     }
   }
 
+  // 获取响应内容
+  const fetchResponseContent = async (url: string) => {
+    try {
+      setResponseContent("正在获取响应内容...")
+      
+      // 检查是否有自定义响应
+      if (selectedRequest && selectedRequest.shouldIntercept && selectedRequest.customResponse) {
+        console.log('使用自定义响应:', selectedRequest.customResponse);
+        
+        // 尝试解析为 JSON
+        try {
+          const jsonData = JSON.parse(selectedRequest.customResponse);
+          const jsonString = JSON.stringify(jsonData, null, 2);
+          setResponseContent(jsonString);
+          
+          // 更新请求信息
+          if (selectedRequest) {
+            selectedRequest.responseContent = jsonString;
+            selectedRequest.responseType = 'json';
+            selectedRequest.responseStatus = 200;
+            selectedRequest.responseStatusText = 'OK';
+            selectedRequest.responseTime = 0;
+          }
+          
+          return; // 使用自定义响应后直接返回
+        } catch (e) {
+          // 如果不是 JSON，则直接使用文本
+          setResponseContent(selectedRequest.customResponse);
+          
+          // 更新请求信息
+          if (selectedRequest) {
+            selectedRequest.responseContent = selectedRequest.customResponse;
+            selectedRequest.responseType = 'text';
+            selectedRequest.responseStatus = 200;
+            selectedRequest.responseStatusText = 'OK';
+            selectedRequest.responseTime = 0;
+          }
+          
+          return; // 使用自定义响应后直接返回
+        }
+      }
+      
+      // 准备请求头
+      let headers: {[key: string]: string} = {
+        "X-Requested-With": "XMLHttpRequest"
+      }
+      
+      // 如果有原始请求头，将其合并到请求中
+      if (selectedRequest && selectedRequest.requestHeaders) {
+        // 复制原始请求头，但过滤一些不应该复制的头
+        const skipHeaders = ['host', 'connection', 'content-length', 'origin', 'referer', 'sec-fetch-dest', 'sec-fetch-mode', 'sec-fetch-site'];
+        
+        Object.entries(selectedRequest.requestHeaders).forEach(([key, value]) => {
+          const lowerKey = key.toLowerCase();
+          if (!skipHeaders.includes(lowerKey)) {
+            headers[key] = value;
+          }
+        });
+        
+        console.log('使用原始请求头:', headers);
+      }
+      
+      // 尝试发送请求获取内容
+      const response = await fetch(url, {
+        method: selectedRequest?.method || "GET",
+        headers: headers,
+        // 如果需要发送凭证，比如 cookies
+        credentials: "include"
+      }).catch(error => {
+        console.error("请求失败:", error)
+        throw new Error(`请求失败: ${error.message}`)
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP 错误! 状态: ${response.status}`)
+      }
+      
+      // 尝试解析为 JSON
+      try {
+        const jsonData = await response.json()
+        const jsonString = JSON.stringify(jsonData, null, 2)
+        setResponseContent(jsonString)
+        
+        // 如果选中的请求存在，更新其响应内容
+        if (selectedRequest) {
+          selectedRequest.responseContent = jsonString
+          selectedRequest.responseType = 'json'
+        }
+      } catch (e) {
+        // 如果不是 JSON，则获取文本内容
+        const textData = await response.text()
+        setResponseContent(textData)
+        
+        // 如果选中的请求存在，更新其响应内容
+        if (selectedRequest) {
+          selectedRequest.responseContent = textData
+          selectedRequest.responseType = 'text'
+        }
+      }
+    } catch (error) {
+      console.error("获取响应内容失败:", error)
+      setResponseContent(`获取响应内容失败: ${error.message}\n\n请注意：由于浏览器的安全策略，直接获取跨域资源可能会失败。\n这是正常的安全限制，防止未经授权的跨站请求。`)
+    }
+  }
+  
   // 处理拖动改变详情面板高度
   const handleResizerMouseDown = (e: React.MouseEvent) => {
     const startY = e.clientY
@@ -203,10 +329,10 @@ function App() {
                 }>
                 <td title={getDomain(req.url)}>{getDomain(req.url)}</td>
                 <td title={getPath(req.url)}>{getPath(req.url)}</td>
-                <td className={`method method-${req.method}`}>{req.method}</td>
+                <td className={`method method-${String(req.method)}`}>{String(req.method)}</td>
                 <td className="status-success">200</td>
-                <td>{req.type}</td>
-                <td title={req.initiator || ""}>{req.initiator || "-"}</td>
+                <td>{typeof req.type === 'string' ? req.type : String(req.type)}</td>
+                <td title={req.initiator ? String(req.initiator) : ""}>{req.initiator ? String(req.initiator) : "-"}</td>
                 <td>{new Date(req.timeStamp).toLocaleTimeString()}</td>
               </tr>
             ))}
@@ -248,11 +374,11 @@ function App() {
                     <tbody>
                       <tr>
                         <th>请求 URL</th>
-                        <td>{selectedRequest.url}</td>
+                        <td>{typeof selectedRequest.url === 'string' ? selectedRequest.url : String(selectedRequest.url)}</td>
                       </tr>
                       <tr>
                         <th>请求方法</th>
-                        <td>{selectedRequest.method}</td>
+                        <td>{typeof selectedRequest.method === 'string' ? selectedRequest.method : String(selectedRequest.method)}</td>
                       </tr>
                       <tr>
                         <th>状态码</th>
@@ -260,7 +386,7 @@ function App() {
                       </tr>
                       <tr>
                         <th>远程地址</th>
-                        <td>{getDomain(selectedRequest.url)}</td>
+                        <td>{getDomain(String(selectedRequest.url))}</td>
                       </tr>
                       <tr>
                         <th>引用者策略</th>
@@ -297,10 +423,104 @@ function App() {
 
               {activeTab === "response" && (
                 <div>
-                  <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                    {/* 这里可以显示响应内容，目前使用占位符 */}
-                    {"响应内容将显示在这里"}
-                  </pre>
+                  {selectedRequest && selectedRequest.responseStatus ? (
+                    <div>
+                      <div style={{ marginBottom: "10px" }}>
+                        <strong>状态码:</strong> {String(selectedRequest.responseStatus)} {selectedRequest.responseStatusText ? String(selectedRequest.responseStatusText) : ''}
+                      </div>
+                      {selectedRequest.responseHeaders && (
+                        <div style={{ marginBottom: "10px" }}>
+                          <strong>响应头:</strong>
+                          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <tbody>
+                              {Object.entries(selectedRequest.responseHeaders).map(([key, value]) => (
+                                <tr key={key}>
+                                  <td style={{ padding: "2px 8px", borderBottom: "1px solid #eee", fontWeight: "bold" }}>{key}</td>
+                                  <td style={{ padding: "2px 8px", borderBottom: "1px solid #eee" }}>{typeof value === 'string' ? value : JSON.stringify(value)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                      {selectedRequest.responseSize && (
+                        <div style={{ marginBottom: "10px" }}>
+                          <strong>响应大小:</strong> {typeof selectedRequest.responseSize === 'number' ? (selectedRequest.responseSize / 1024).toFixed(2) : '0'} KB
+                        </div>
+                      )}
+                      {selectedRequest.responseTime && (
+                        <div style={{ marginBottom: "10px" }}>
+                          <strong>响应时间:</strong> {typeof selectedRequest.responseTime === 'number' ? selectedRequest.responseTime.toFixed(2) : String(selectedRequest.responseTime)} ms
+                        </div>
+                      )}
+                      {selectedRequest.responseContent ? (
+                        <div>
+                          <strong>响应内容:</strong>
+                          <pre style={{ margin: "10px 0", padding: "10px", backgroundColor: "#f5f5f5", borderRadius: "3px", whiteSpace: "pre-wrap", maxHeight: "300px", overflow: "auto" }}>
+                            {typeof selectedRequest.responseContent === 'string' ? selectedRequest.responseContent : JSON.stringify(selectedRequest.responseContent, null, 2)}
+                          </pre>
+                        </div>
+                      ) : (
+                        <div>
+                          <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                            {responseContent ? (
+                              responseContent
+                            ) : (
+                              <div style={{ color: "#888" }}>
+                                {selectedRequest.responseType === 'image' ? 
+                                  "图片内容无法直接显示" : 
+                                  "由于浏览器安全限制，无法直接获取响应体内容。可以尝试重新获取。"}
+                                <button 
+                                  onClick={() => fetchResponseContent(selectedRequest.url)}
+                                  style={{
+                                    marginLeft: "10px",
+                                    padding: "2px 8px",
+                                    backgroundColor: "#4285f4",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "3px",
+                                    cursor: "pointer",
+                                    fontSize: "12px"
+                                  }}
+                                >
+                                  尝试获取内容
+                                </button>
+                              </div>
+                            )}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                        {responseContent ? (
+                          responseContent
+                        ) : (
+                          <div style={{ color: "#888" }}>
+                            暂无响应信息。可能是请求尚未完成，或者浏览器限制了访问。
+                            {selectedRequest && (
+                              <button 
+                                onClick={() => fetchResponseContent(selectedRequest.url)}
+                                style={{
+                                  marginLeft: "10px",
+                                  padding: "2px 8px",
+                                  backgroundColor: "#4285f4",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "3px",
+                                  cursor: "pointer",
+                                  fontSize: "12px"
+                                }}
+                              >
+                                尝试获取内容
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
 

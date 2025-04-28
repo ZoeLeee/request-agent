@@ -34,11 +34,11 @@
     ],
     "permissions": [
       "webRequest",
-      "webRequestBlocking",
       "<all_urls>",
       "storage",
       "tabs",
-      "activeTab"
+      "activeTab",
+      "debugger"
     ],
     "background": {
       "service_worker": "background.ts"

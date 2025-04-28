@@ -29,6 +29,19 @@ interface RequestInfo {
   frameId: number
   parentFrameId: number
   initiator?: string
+  // 请求头字段
+  requestHeaders?: {[key: string]: string}
+  // 响应相关字段
+  responseStatus?: number
+  responseStatusText?: string
+  responseHeaders?: {[key: string]: string}
+  responseContent?: string
+  responseTime?: number
+  responseSize?: number
+  responseType?: string
+  // 自定义响应���段
+  shouldIntercept?: boolean
+  customResponse?: string
 }
 
 // 存储规则的接口
@@ -52,7 +65,31 @@ storage.watch({
   }
 })
 
-// 拦截网络请求
+// 创建一个Map来存储请求信息，以便后续更新响应信息
+const requestMap = new Map<string, RequestInfo>()
+
+// 拦截请求头信息
+chrome.webRequest.onSendHeaders.addListener(
+  (details) => {
+    const requestInfo = requestMap.get(details.requestId)
+    if (requestInfo) {
+      // 提取请求头信息
+      const headers: {[key: string]: string} = {}
+      if (details.requestHeaders) {
+        for (const header of details.requestHeaders) {
+          if (header.name && header.value) {
+            headers[header.name.toLowerCase()] = header.value
+          }
+        }
+      }
+      requestInfo.requestHeaders = headers
+    }
+  },
+  { urls: ["<all_urls>"] },
+  ["requestHeaders"]
+)
+
+// 拦截网络请求并记录信息
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
     const requestInfo: RequestInfo = {
@@ -68,14 +105,285 @@ chrome.webRequest.onBeforeRequest.addListener(
     }
   
     requests.push(requestInfo)
+    // 将请求信息存储到Map中，以便后续更新
+    requestMap.set(details.requestId, requestInfo)
+    
     // 检查是否有自定义规则匹配
-
     const matchedRule = rules.find(
       (rule) =>
         (rule.matchType === "exact" && rule.url === details.url) ||
         (rule.matchType === "contains" && details.url.includes(rule.url)) ||
         (rule.matchType === "regex" && new RegExp(rule.url).test(details.url))
     )
+    
+    // 如果找到匹配的规则，标记该请求为“应被拦截”
+    if (matchedRule && matchedRule.response) {
+      console.log(`找到匹配的规则: ${details.url}, 将在响应阶段处理`)
+      
+      // 将自定义响应存储到请求信息中
+      requestInfo.shouldIntercept = true
+      requestInfo.customResponse = matchedRule.response
+    }
+  },
+  { urls: ["<all_urls>"] }
+)
+
+// 使用 Chrome Debugger API 拦截和修改网络请求
+
+// 存储当前活跃的 debugger 连接
+// 格式： { tabId: { attached: boolean, requestMap: Map<string, RequestInfo> } }
+const debuggerConnections: { [tabId: number]: { attached: boolean, requestMap: Map<string, string> } } = {}
+
+// 监听标签页创建事件
+chrome.tabs.onCreated.addListener((tab) => {
+  if (tab.id) {
+    attachDebugger(tab.id)
+  }
+})
+
+// 监听标签页更新事件
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete" && tab.id) {
+    console.log('tab.id: ', tab.id);
+    attachDebugger(tab.id)
+  }
+})
+
+// 监听标签页关闭事件
+chrome.tabs.onRemoved.addListener((tabId) => {
+  detachDebugger(tabId)
+})
+
+// 连接到 debugger
+async function attachDebugger(tabId: number) {
+  // 如果已经连接，则跳过
+  if (debuggerConnections[tabId] && debuggerConnections[tabId].attached) {
+    return
+  }
+  
+  try {
+    // 连接到 debugger
+    await chrome.debugger.attach({ tabId }, "1.3")
+    console.log(`成功连接到 debugger: tabId=${tabId}`)
+    
+    // 初始化连接状态
+    debuggerConnections[tabId] = {
+      attached: true,
+      requestMap: new Map()
+    }
+    
+    // 启用网络事件
+    await chrome.debugger.sendCommand({ tabId }, "Network.enable")
+    
+    // 启用 Fetch 域，允许拦截请求
+    await chrome.debugger.sendCommand({ tabId }, "Fetch.enable", {
+      patterns: [{ urlPattern: "*" }]
+    }).catch(err => {
+      console.error(`启用 Fetch 域失败: tabId=${tabId}`, err)
+    })
+    
+    console.log(`已启用 Network 和 Fetch 域: tabId=${tabId}`)
+    
+    // 监听请求发送事件
+    chrome.debugger.onEvent.addListener(handleDebuggerEvent)
+  } catch (error) {
+    console.error(`连接 debugger 失败: tabId=${tabId}`, error)
+  }
+}
+
+// 断开与 debugger 的连接
+async function detachDebugger(tabId: number) {
+  if (debuggerConnections[tabId] && debuggerConnections[tabId].attached) {
+    try {
+      await chrome.debugger.detach({ tabId })
+      console.log(`断开与 debugger 的连接: tabId=${tabId}`)
+      delete debuggerConnections[tabId]
+    } catch (error) {
+      console.error(`断开 debugger 连接失败: tabId=${tabId}`, error)
+    }
+  }
+}
+
+// 处理 debugger 事件
+async function handleDebuggerEvent(
+  debuggeeId: chrome.debugger.Debuggee,
+  method: string,
+  params?: any
+) {
+  const { tabId } = debuggeeId
+  
+  if (!tabId || !debuggerConnections[tabId]) {
+    return
+  }
+  
+  // 处理 Fetch 请求拦截事件
+  if (method === "Fetch.requestPaused" && params) {
+    const { requestId, request, resourceType } = params
+    
+    // 检查是否有匹配的规则
+    const matchedRule = rules.find(
+      (rule) =>
+        (rule.matchType === "exact" && rule.url === request.url) ||
+        (rule.matchType === "contains" && request.url.includes(rule.url)) ||
+        (rule.matchType === "regex" && new RegExp(rule.url).test(request.url))
+    )
+    
+    if (matchedRule && matchedRule.response) {
+      try {
+        console.log(`找到匹配的规则，拦截请求: ${request.url}`)
+        
+        // 准备响应头
+        const headers = [
+          { name: "Content-Type", value: "application/json" },
+          { name: "Access-Control-Allow-Origin", value: "*" }
+        ]
+        
+        // 使用自定义响应完成请求
+        await chrome.debugger.sendCommand(
+          { tabId },
+          "Fetch.fulfillRequest",
+          {
+            requestId,
+            responseCode: 200,
+            responseHeaders: headers,
+            body: btoa(unescape(encodeURIComponent(matchedRule.response))) // Base64 编码，处理中文
+          }
+        )
+        
+        console.log(`成功拦截并修改响应: ${requestId}`)
+        
+        // 将请求信息存储到请求数组中
+        const requestInfo: RequestInfo = {
+          id: requestId,
+          url: request.url,
+          method: request.method,
+          timeStamp: Date.now(),
+          type: resourceType as ResourceType,
+          tabId: tabId,
+          frameId: 0,
+          parentFrameId: 0,
+          initiator: request.headers['Origin'] || '',
+          requestHeaders: {},
+          responseContent: matchedRule.response,
+          responseStatus: 200,
+          responseStatusText: "OK",
+          responseType: "json",
+          responseTime: 0,
+          shouldIntercept: true,
+          customResponse: matchedRule.response
+        }
+        
+        // 将请求信息添加到请求数组中
+        requests.push(requestInfo)
+        
+        return
+      } catch (error) {
+        console.error(`拦截响应失败: ${requestId}`, error)
+        
+        // 如果拦截失败，继续请求
+        await chrome.debugger.sendCommand(
+          { tabId },
+          "Fetch.continueRequest",
+          { requestId }
+        ).catch(err => {
+          console.error(`继续请求失败: ${requestId}`, err)
+        })
+      }
+    } else {
+      // 如果没有匹配的规则，继续请求
+      await chrome.debugger.sendCommand(
+        { tabId },
+        "Fetch.continueRequest",
+        { requestId }
+      ).catch(err => {
+        console.error(`继续请求失败: ${requestId}`, err)
+      })
+    }
+  }
+  
+  // 处理网络请求事件，用于记录请求
+  if (method === "Network.requestWillBeSent" && params) {
+    const { requestId, request, type } = params
+    
+    // 检查是否已经存在该请求（可能已经被 Fetch 拦截处理过）
+    const existingRequest = requests.find(req => req.url === request.url && req.timeStamp > Date.now() - 5000)
+    
+    if (!existingRequest) {
+      // 将请求信息存储到请求数组中
+      const requestInfo: RequestInfo = {
+        id: requestId,
+        url: request.url,
+        method: request.method,
+        timeStamp: Date.now(),
+        type: type.toLowerCase() as ResourceType,
+        tabId: tabId,
+        frameId: 0,
+        parentFrameId: 0,
+        initiator: params.initiator || ''
+      }
+      
+      // 将请求信息添加到请求数组中
+      requests.push(requestInfo)
+      // 将请求信息存储到 Map 中，以便后续更新
+      requestMap.set(requestId, requestInfo)
+    }
+  }
+}
+
+// 拦截响应头信息
+chrome.webRequest.onHeadersReceived.addListener(
+  (details) => {
+    const requestInfo = requestMap.get(details.requestId)
+    if (requestInfo) {
+      // 提取状态码和状态文本
+      requestInfo.responseStatus = details.statusCode
+      requestInfo.responseStatusText = details.statusLine ? details.statusLine.split(' ')[1] : ''
+      
+      // 提取响应头信息
+      const headers: {[key: string]: string} = {}
+      if (details.responseHeaders) {
+        for (const header of details.responseHeaders) {
+          if (header.name && header.value) {
+            headers[header.name.toLowerCase()] = header.value
+          }
+        }
+      }
+      requestInfo.responseHeaders = headers
+      
+      // 尝试确定响应类型
+      const contentType = headers['content-type'] || ''
+      if (contentType.includes('application/json')) {
+        requestInfo.responseType = 'json'
+      } else if (contentType.includes('text/')) {
+        requestInfo.responseType = 'text'
+      } else if (contentType.includes('image/')) {
+        requestInfo.responseType = 'image'
+      } else {
+        requestInfo.responseType = contentType || 'unknown'
+      }
+      
+      // 尝试确定响应大小
+      if (headers['content-length']) {
+        requestInfo.responseSize = parseInt(headers['content-length'], 10)
+      }
+    }
+  },
+  { urls: ["<all_urls>"] },
+  ["responseHeaders"]
+)
+
+// 请求完成时的处理
+chrome.webRequest.onCompleted.addListener(
+  (details) => {
+    const requestInfo = requestMap.get(details.requestId)
+    if (requestInfo) {
+      // 记录响应完成时间
+      requestInfo.responseTime = details.timeStamp - requestInfo.timeStamp
+      
+      // 注意：由于浏览器安全限制，我们无法直接获取响应体内容
+      // 如果需要获取响应体内容，可以考虑使用 chrome.debugger API
+      // 或者在前端页面中通过 fetch API 重新请求
+    }
   },
   { urls: ["<all_urls>"] }
 )
