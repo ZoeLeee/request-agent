@@ -519,6 +519,10 @@ html, body {
   z-index: 1;
 }
 
+.network-table tr {
+  height: 40px;
+}
+
 .network-table tr:hover {
   background-color: #f0f0f0;
   height: 40px;

@@ -135,6 +135,7 @@ chrome.webRequest.onSendHeaders.addListener(
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
     if (details.type !== "xmlhttprequest") return
+    if (details.tabId !== inspectedTabId) return
 
     const requestInfo: RequestInfo = {
       id: details.requestId,
