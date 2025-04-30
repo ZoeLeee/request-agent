@@ -58,11 +58,39 @@ export let requests: RequestInfo[] = []
 const storage = new Storage()
 
 let rules: Rule[] = []
+let debugEnabled = false
 
 storage.watch({
   rules: (c) => {
     rules = c.newValue
+  },
+  debugEnabled: (c) => {
+    debugEnabled = c.newValue || false
+    console.log(`调试模式已${debugEnabled ? '开启' : '关闭'}`)
+    
+    // 当调试模式状态变化时，更新所有标签页的 debugger 连接
+    if (debugEnabled) {
+      // 获取所有标签页并连接 debugger
+      chrome.tabs.query({}, (tabs) => {
+        tabs.forEach(tab => {
+          if (tab.id) {
+            attachDebugger(tab.id)
+          }
+        })
+      })
+    } else {
+      // 断开所有 debugger 连接
+      Object.keys(debuggerConnections).forEach(tabId => {
+        detachDebugger(parseInt(tabId))
+      })
+    }
   }
+})
+
+// 初始化调试状态
+storage.get<boolean>("debugEnabled").then((value) => {
+  debugEnabled = value || false
+  console.log(`初始化调试模式: ${debugEnabled ? '开启' : '关闭'}`)
 })
 
 // 创建一个Map来存储请求信息，以便后续更新响应信息
@@ -136,18 +164,18 @@ const debuggerConnections: { [tabId: number]: { attached: boolean, requestMap: M
 
 // 监听标签页创建事件
 chrome.tabs.onCreated.addListener((tab) => {
-  if (tab.id) {
+  if (tab.id && debugEnabled) {
     attachDebugger(tab.id)
   }
 })
 
 // 监听标签页更新事件
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab.id) {
+  if (changeInfo.status === "complete" && tab.id && debugEnabled) {
     // 等待一小段时间再连接，确保页面已完全加载
     setTimeout(() => {
       attachDebugger(tab.id)
-    }, 500)
+    }, 1000) // 增加延迟时间，确保页面完全加载
   }
 })
 
@@ -158,7 +186,9 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // 连接到 debugger
 async function attachDebugger(tabId: number) {
-  // 如果已经连接，则跳过
+  if (!tabId || !debugEnabled) {
+    return
+  }
   if (debuggerConnections[tabId] && debuggerConnections[tabId].attached) {
     return
   }

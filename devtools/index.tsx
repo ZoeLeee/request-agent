@@ -74,6 +74,7 @@ function App() {
   const [filterText, setFilterText] = useState<string>("")
   const [activeTab, setActiveTab] = useState<string>("headers")
   const [detailsHeight, setDetailsHeight] = useState<number>(300)
+  const [debugEnabled, setDebugEnabled] = useState<boolean>(false)
 
   useEffect(() => {
     // 获取当前标签页的请求
@@ -92,6 +93,11 @@ function App() {
     // 获取存储的规则
     storage.get<Rule[]>("rules").then((storedRules = []) => {
       setRules(storedRules)
+    })
+    
+    // 获取调试状态
+    storage.get<boolean>("debugEnabled").then((value) => {
+      setDebugEnabled(value || false)
     })
 
     // 定时刷新请求列表
@@ -152,6 +158,14 @@ function App() {
     await storage.set("rules", updatedRules)
     setRules(updatedRules)
     setNewRule({ id: "", url: "", matchType: "exact", response: "" })
+  }
+  
+  // 处理调试开关状态变化
+  const handleDebugToggle = async () => {
+    const newState = !debugEnabled
+    await storage.set("debugEnabled", newState)
+    setDebugEnabled(newState)
+    console.log(`调试模式已${newState ? '开启' : '关闭'}`)
   }
 
   // 过滤请求列表
@@ -338,6 +352,23 @@ function App() {
           value={filterText}
           onChange={(e) => setFilterText(e.target.value)}
         />
+        <div className="debug-toggle" style={{ marginLeft: '10px', display: 'flex', alignItems: 'center' }}>
+          <label style={{ marginRight: '5px', fontSize: '14px' }}>调试模式:</label>
+          <button 
+            onClick={handleDebugToggle}
+            style={{
+              padding: '5px 10px',
+              backgroundColor: debugEnabled ? '#4CAF50' : '#f44336',
+              color: 'white',
+              border: 'none',
+              borderRadius: '3px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            {debugEnabled ? '已开启' : '已关闭'}
+          </button>
+        </div>
       </div>
 
       <div className="table-container">
