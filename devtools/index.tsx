@@ -75,6 +75,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<string>("headers")
   const [detailsHeight, setDetailsHeight] = useState<number>(300)
   const [debugEnabled, setDebugEnabled] = useState<boolean>(false)
+  const [isToggling, setIsToggling] = useState<boolean>(false) // 添加切换状态
 
   useEffect(() => {
     // 获取当前标签页的请求
@@ -99,6 +100,27 @@ function App() {
     storage.get<boolean>("debugEnabled").then((value) => {
       setDebugEnabled(value || false)
     })
+    
+    // 将当前标签页 ID 保存到存储中，使当前标签页成为调试目标
+    if (chrome.devtools?.inspectedWindow?.tabId) {
+      const currentTabId = chrome.devtools.inspectedWindow.tabId
+      console.log(`当前标签页 ID: ${currentTabId}`)
+      storage.set("inspectedTabId", currentTabId)
+    }
+    
+    // 当 DevTools 面板关闭时自动关闭调试功能
+    const handleBeforeUnload = () => {
+      console.log('开发者工具面板关闭，自动关闭调试功能')
+      storage.set("debugEnabled", false)
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // 组件卸载时也关闭调试功能
+      storage.set("debugEnabled", false)
+    }
 
     // 定时刷新请求列表
     const interval = setInterval(() => {
@@ -162,10 +184,31 @@ function App() {
   
   // 处理调试开关状态变化
   const handleDebugToggle = async () => {
-    const newState = !debugEnabled
-    await storage.set("debugEnabled", newState)
-    setDebugEnabled(newState)
-    console.log(`调试模式已${newState ? '开启' : '关闭'}`)
+    // 如果正在切换中，则不允许再次切换
+    if (isToggling) return
+    
+    try {
+      setIsToggling(true) // 设置切换状态为正在切换
+      
+      const newState = !debugEnabled
+      await storage.set("debugEnabled", newState)
+      setDebugEnabled(newState)
+      console.log(`调试模式已${newState ? '开启' : '关闭'}`)
+      
+      // 如果开启调试模式，确保当前标签页 ID 已设置
+      if (newState && chrome.devtools?.inspectedWindow?.tabId) {
+        const currentTabId = chrome.devtools.inspectedWindow.tabId
+        await storage.set("inspectedTabId", currentTabId)
+        console.log(`已设置调试标签页 ID: ${currentTabId}`)
+      }
+    } catch (error) {
+      console.error('切换调试模式失败:', error)
+    } finally {
+      // 添加延迟，确保切换有足够的时间完成
+      setTimeout(() => {
+        setIsToggling(false) // 切换完成，重置状态
+      }, 1000) // 1秒的延迟
+    }
   }
 
   // 过滤请求列表
@@ -356,17 +399,40 @@ function App() {
           <label style={{ marginRight: '5px', fontSize: '14px' }}>调试模式:</label>
           <button 
             onClick={handleDebugToggle}
+            disabled={isToggling}
             style={{
               padding: '5px 10px',
               backgroundColor: debugEnabled ? '#4CAF50' : '#f44336',
               color: 'white',
               border: 'none',
               borderRadius: '3px',
-              cursor: 'pointer',
-              fontSize: '12px'
+              cursor: isToggling ? 'not-allowed' : 'pointer',
+              fontSize: '12px',
+              opacity: isToggling ? 0.7 : 1,
+              position: 'relative'
             }}
           >
-            {debugEnabled ? '已开启' : '已关闭'}
+            {isToggling ? (
+              <>
+                <span style={{ visibility: isToggling ? 'hidden' : 'visible' }}>
+                  {debugEnabled ? '已开启' : '已关闭'}
+                </span>
+                <span style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  切换中...
+                </span>
+              </>
+            ) : (
+              debugEnabled ? '已开启' : '已关闭'
+            )}
           </button>
         </div>
       </div>

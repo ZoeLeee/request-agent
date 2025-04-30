@@ -59,6 +59,12 @@ const storage = new Storage()
 
 let rules: Rule[] = []
 let debugEnabled = false
+let inspectedTabId: number | null = null
+
+// 检查是否是当前正在调试的标签页
+function isInspectedTab(tabId: number): boolean {
+  return inspectedTabId === tabId
+}
 
 storage.watch({
   rules: (c) => {
@@ -68,21 +74,25 @@ storage.watch({
     debugEnabled = c.newValue || false
     console.log(`调试模式已${debugEnabled ? '开启' : '关闭'}`)
     
-    // 当调试模式状态变化时，更新所有标签页的 debugger 连接
+    // 当调试模式状态变化时，更新调试器连接
     if (debugEnabled) {
-      // 获取所有标签页并连接 debugger
-      chrome.tabs.query({}, (tabs) => {
-        tabs.forEach(tab => {
-          if (tab.id) {
-            attachDebugger(tab.id)
-          }
-        })
-      })
+      // 如果有已设置的检查标签页，则连接到该标签页
+      if (inspectedTabId) {
+        attachDebugger(inspectedTabId)
+      }
     } else {
       // 断开所有 debugger 连接
       Object.keys(debuggerConnections).forEach(tabId => {
         detachDebugger(parseInt(tabId))
       })
+    }
+  },
+  // 记录当前正在调试的标签页 ID
+  inspectedTabId: (c) => {
+    const tabId = c.newValue
+    if (tabId && debugEnabled) {
+      // 如果调试模式已开启，则连接到该标签页
+      attachDebugger(tabId)
     }
   }
 })
@@ -91,6 +101,12 @@ storage.watch({
 storage.get<boolean>("debugEnabled").then((value) => {
   debugEnabled = value || false
   console.log(`初始化调试模式: ${debugEnabled ? '开启' : '关闭'}`)
+})
+
+// 初始化当前正在调试的标签页 ID
+storage.get<number>("inspectedTabId").then((value) => {
+  inspectedTabId = value
+  console.log(`初始化调试标签页 ID: ${inspectedTabId}`)
 })
 
 // 创建一个Map来存储请求信息，以便后续更新响应信息
@@ -164,14 +180,16 @@ const debuggerConnections: { [tabId: number]: { attached: boolean, requestMap: M
 
 // 监听标签页创建事件
 chrome.tabs.onCreated.addListener((tab) => {
-  if (tab.id && debugEnabled) {
+  // 只对当前正在调试的标签页进行连接
+  if (tab.id && debugEnabled && isInspectedTab(tab.id)) {
     attachDebugger(tab.id)
   }
 })
 
 // 监听标签页更新事件
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab.id && debugEnabled) {
+  // 只对当前正在调试的标签页进行连接
+  if (changeInfo.status === "complete" && tab.id && debugEnabled && isInspectedTab(tab.id)) {
     // 等待一小段时间再连接，确保页面已完全加载
     setTimeout(() => {
       attachDebugger(tab.id)
@@ -432,36 +450,36 @@ chrome.webRequest.onCompleted.addListener(
 )
 
 // 监听扩展图标点击事件，打开新窗口或聚焦到已打开的窗口
-chrome.action.onClicked.addListener(() => {
-  const targetUrl = chrome.runtime.getURL("tabs/index.html");
+// chrome.action.onClicked.addListener(() => {
+//   const targetUrl = chrome.runtime.getURL("tabs/index.html");
   
-  // 查找是否已经有打开的窗口
-  chrome.windows.getAll({ populate: true }, (windows) => {
-    // 查找包含目标URL的窗口
-    const existingWindow = windows.find(window => 
-      window.tabs && window.tabs.some(tab => tab.url === targetUrl)
-    );
+//   // 查找是否已经有打开的窗口
+//   chrome.windows.getAll({ populate: true }, (windows) => {
+//     // 查找包含目标URL的窗口
+//     const existingWindow = windows.find(window => 
+//       window.tabs && window.tabs.some(tab => tab.url === targetUrl)
+//     );
     
-    if (existingWindow && existingWindow.id) {
-      // 如果找到已打开的窗口，则聚焦并激活该窗口
-      chrome.windows.update(existingWindow.id, { focused: true }, () => {
-        // 找到并激活对应的标签页
-        if (existingWindow.tabs) {
-          const targetTab = existingWindow.tabs.find(tab => tab.url === targetUrl);
-          if (targetTab && targetTab.id) {
-            chrome.tabs.update(targetTab.id, { active: true });
-          }
-        }
-      });
-    } else {
-      // 如果没有找到已打开的窗口，则创建新窗口
-      chrome.windows.create({
-        url: targetUrl,
-        type: "popup",
-        state: "maximized"  // 设置窗口为最大化状态
-      });
-    }
-  });
-})
+//     if (existingWindow && existingWindow.id) {
+//       // 如果找到已打开的窗口，则聚焦并激活该窗口
+//       chrome.windows.update(existingWindow.id, { focused: true }, () => {
+//         // 找到并激活对应的标签页
+//         if (existingWindow.tabs) {
+//           const targetTab = existingWindow.tabs.find(tab => tab.url === targetUrl);
+//           if (targetTab && targetTab.id) {
+//             chrome.tabs.update(targetTab.id, { active: true });
+//           }
+//         }
+//       });
+//     } else {
+//       // 如果没有找到已打开的窗口，则创建新窗口
+//       chrome.windows.create({
+//         url: targetUrl,
+//         type: "popup",
+//         state: "maximized"  // 设置窗口为最大化状态
+//       });
+//     }
+//   });
+// })
 
 
