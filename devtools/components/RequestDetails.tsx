@@ -46,11 +46,6 @@ const RequestDetails: React.FC<RequestDetailsProps> = ({
               响应
             </div>
             <div
-              className={`details-tab ${activeTab === "timing" ? "active" : ""}`}
-              onClick={() => setActiveTab("timing")}>
-              时间
-            </div>
-            <div
               className={`details-tab ${activeTab === "rule" ? "active" : ""}`}
               onClick={() => setActiveTab("rule")}>
               规则编辑
@@ -67,7 +62,6 @@ const RequestDetails: React.FC<RequestDetailsProps> = ({
         <div className="details-content">
           {activeTab === "headers" && <HeadersTab selectedRequest={selectedRequest} getDomain={getDomain} />}
           {activeTab === "response" && <ResponseTab selectedRequest={selectedRequest} responseContent={responseContent} fetchResponseContent={fetchResponseContent} />}
-          {activeTab === "timing" && <TimingTab selectedRequest={selectedRequest} />}
           {activeTab === "rule" && <RuleTab newRule={newRule} setNewRule={setNewRule} handleRuleSave={handleRuleSave} />}
         </div>
       </div>
@@ -170,178 +164,89 @@ const ResponseTab: React.FC<{
 }) => {
   return (
     <div>
-      {selectedRequest && selectedRequest.responseStatus ? (
-        <div>
-          <div style={{ marginBottom: "10px" }}>
-            <strong>状态码:</strong>{" "}
-            {String(selectedRequest.responseStatus)}{" "}
-            {selectedRequest.responseStatusText
-              ? String(selectedRequest.responseStatusText)
-              : ""}
-          </div>
-          {selectedRequest.responseHeaders && (
-            <div style={{ marginBottom: "10px" }}>
-              <strong>响应头:</strong>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse"
-                }}>
-                <tbody>
-                  {Object.entries(
-                    selectedRequest.responseHeaders
-                  ).map(([key, value]) => (
-                    <tr key={key}>
-                      <td
-                        style={{
-                          padding: "2px 8px",
-                          borderBottom: "1px solid #eee",
-                          fontWeight: "bold"
-                        }}>
-                        {key}
-                      </td>
-                      <td
-                        style={{
-                          padding: "2px 8px",
-                          borderBottom: "1px solid #eee"
-                        }}>
-                        {typeof value === "string"
-                          ? value
-                          : JSON.stringify(value)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+      <h3>状态信息</h3>
+      <table>
+        <tbody>
+          <tr>
+            <th>状态码</th>
+            <td>
+              {selectedRequest.responseStatus || "200"} {selectedRequest.responseStatusText || "OK"}
+            </td>
+          </tr>
           {selectedRequest.responseSize && (
-            <div style={{ marginBottom: "10px" }}>
-              <strong>响应大小:</strong>{" "}
-              {typeof selectedRequest.responseSize === "number"
-                ? (selectedRequest.responseSize / 1024).toFixed(2)
-                : "0"}{" "}
-              KB
-            </div>
+            <tr>
+              <th>响应大小</th>
+              <td>
+                {typeof selectedRequest.responseSize === "number"
+                  ? (selectedRequest.responseSize / 1024).toFixed(2)
+                  : "0"} KB
+              </td>
+            </tr>
           )}
           {selectedRequest.responseTime && (
-            <div style={{ marginBottom: "10px" }}>
-              <strong>响应时间:</strong>{" "}
-              {typeof selectedRequest.responseTime === "number"
-                ? selectedRequest.responseTime.toFixed(2)
-                : String(selectedRequest.responseTime)}{" "}
-              ms
-            </div>
+            <tr>
+              <th>响应时间</th>
+              <td>
+                {typeof selectedRequest.responseTime === "number"
+                  ? selectedRequest.responseTime.toFixed(2)
+                  : String(selectedRequest.responseTime)} ms
+              </td>
+            </tr>
           )}
-          {selectedRequest.responseContent ? (
-            <div>
-              <strong>响应内容:</strong>
-              <pre
-                style={{
-                  margin: "10px 0",
-                  padding: "10px",
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: "3px",
-                  whiteSpace: "pre-wrap",
-                  maxHeight: "300px",
-                  overflow: "auto"
-                }}>
-                {typeof selectedRequest.responseContent === "string"
-                  ? selectedRequest.responseContent
-                  : JSON.stringify(
-                      selectedRequest.responseContent,
-                      null,
-                      2
-                    )}
-              </pre>
-            </div>
+        </tbody>
+      </table>
+
+      <h3>响应头</h3>
+      <table>
+        <tbody>
+          {selectedRequest.responseHeaders ? (
+            Object.entries(selectedRequest.responseHeaders).map(([key, value]) => (
+              <tr key={key}>
+                <th>{key}</th>
+                <td>{typeof value === "string" ? value : JSON.stringify(value)}</td>
+              </tr>
+            ))
           ) : (
-            <div>
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                {responseContent ? (
-                  responseContent
-                ) : (
-                  <div style={{ color: "#888" }}>
-                    {selectedRequest.responseType === "image"
-                      ? "图片内容无法直接显示"
-                      : "由于浏览器安全限制，无法直接获取响应体内容。可以尝试重新获取。"}
-                    <button
-                      onClick={() =>
-                        fetchResponseContent(selectedRequest.url)
-                      }
-                      style={{
-                        marginLeft: "10px",
-                        padding: "2px 8px",
-                        backgroundColor: "#4285f4",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "3px",
-                        cursor: "pointer",
-                        fontSize: "12px"
-                      }}>
-                      尝试获取内容
-                    </button>
-                  </div>
-                )}
-              </pre>
+            <tr>
+              <th>content-type</th>
+              <td>application/json</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      <h3>响应内容</h3>
+      {selectedRequest.responseContent ? (
+        <pre className="response-content">
+          {typeof selectedRequest.responseContent === "string"
+            ? selectedRequest.responseContent
+            : JSON.stringify(selectedRequest.responseContent, null, 2)}
+        </pre>
+      ) : (
+        <div className="response-empty">
+          {responseContent ? (
+            <pre className="response-content">{responseContent}</pre>
+          ) : (
+            <div className="response-message">
+              <p>
+                {selectedRequest.responseType === "image"
+                  ? "图片内容无法直接显示"
+                  : "由于浏览器安全限制，无法直接获取响应体内容。"}
+              </p>
+              <button
+                className="fetch-button"
+                onClick={() => fetchResponseContent(selectedRequest.url)}>
+                尝试获取内容
+              </button>
             </div>
           )}
-        </div>
-      ) : (
-        <div>
-          <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-            {responseContent ? (
-              responseContent
-            ) : (
-              <div style={{ color: "#888" }}>
-                暂无响应信息。可能是请求尚未完成，或者浏览器限制了访问。
-                <button
-                  onClick={() =>
-                    fetchResponseContent(selectedRequest.url)
-                  }
-                  style={{
-                    marginLeft: "10px",
-                    padding: "2px 8px",
-                    backgroundColor: "#4285f4",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "3px",
-                    cursor: "pointer",
-                    fontSize: "12px"
-                  }}>
-                  尝试获取内容
-                </button>
-              </div>
-            )}
-          </pre>
         </div>
       )}
     </div>
   );
 };
 
-// 时间标签页组件
-const TimingTab: React.FC<{ selectedRequest: RequestInfo }> = ({ selectedRequest }) => {
-  return (
-    <div>
-      <div className="timeline-container">
-        <div
-          className="timeline-bar"
-          style={{ width: "60%", left: "10%" }}></div>
-      </div>
-      <table>
-        <tbody>
-          <tr>
-            <th>开始时间</th>
-            <td>
-              {new Date(selectedRequest.timeStamp).toLocaleString()}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-};
+
 
 // 规则标签页组件
 const RuleTab: React.FC<{ 

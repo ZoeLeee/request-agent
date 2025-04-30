@@ -640,6 +640,38 @@ html, body {
   color: #333;
 }
 
+.response-content {
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 3px;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow: auto;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.response-empty {
+  margin: 10px 0;
+}
+
+.response-message {
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.fetch-button {
+  padding: 5px 10px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
 .details-content table {
   width: 100%;
   border-collapse: collapse;
