@@ -521,6 +521,7 @@ html, body {
 
 .network-table tr:hover {
   background-color: #f0f0f0;
+  height: 40px;
 }
 
 .network-table tr.selected {
@@ -578,9 +579,18 @@ html, body {
   z-index: 2;
 }
 
+/* 详情面板头部样式 */
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f5f5f5;
+}
+
 .details-tabs {
   display: flex;
-  border-bottom: 1px solid #e0e0e0;
+  flex: 1;
 }
 
 .details-tab {
@@ -592,6 +602,25 @@ html, body {
 .details-tab.active {
   border-bottom: 2px solid #4285f4;
   color: #4285f4;
+}
+
+.close-button {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  margin-right: 10px;
+  border-radius: 50%;
+}
+
+.close-button:hover {
+  background-color: #e0e0e0;
+  color: #333;
 }
 
 .details-content {

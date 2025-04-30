@@ -13,6 +13,7 @@ interface RequestDetailsProps {
   getDomain: (url: string) => string;
   handleResizerMouseDown: (e: React.MouseEvent) => void;
   detailsHeight: number;
+  onClose: () => void;
 }
 
 const RequestDetails: React.FC<RequestDetailsProps> = ({
@@ -26,33 +27,41 @@ const RequestDetails: React.FC<RequestDetailsProps> = ({
   handleRuleSave,
   getDomain,
   handleResizerMouseDown,
-  detailsHeight
+  detailsHeight,
+  onClose
 }) => {
   return (
-    <div className="fixed right-0 top-0 w-1/2 h-full">
-      <div className="resizer" onMouseDown={handleResizerMouseDown}></div>
-      <div className="details-panel h-full" style={{ height: detailsHeight }}>
-        <div className="details-tabs">
-          <div
-            className={`details-tab ${activeTab === "headers" ? "active" : ""}`}
-            onClick={() => setActiveTab("headers")}>
-            标头
+    <div className="fixed right-0 top-0 w-1/2 h-full z-10">
+      <div className="details-panel h-full">
+        <div className="details-header">
+          <div className="details-tabs">
+            <div
+              className={`details-tab ${activeTab === "headers" ? "active" : ""}`}
+              onClick={() => setActiveTab("headers")}>
+              标头
+            </div>
+            <div
+              className={`details-tab ${activeTab === "response" ? "active" : ""}`}
+              onClick={() => setActiveTab("response")}>
+              响应
+            </div>
+            <div
+              className={`details-tab ${activeTab === "timing" ? "active" : ""}`}
+              onClick={() => setActiveTab("timing")}>
+              时间
+            </div>
+            <div
+              className={`details-tab ${activeTab === "rule" ? "active" : ""}`}
+              onClick={() => setActiveTab("rule")}>
+              规则编辑
+            </div>
           </div>
-          <div
-            className={`details-tab ${activeTab === "response" ? "active" : ""}`}
-            onClick={() => setActiveTab("response")}>
-            响应
-          </div>
-          <div
-            className={`details-tab ${activeTab === "timing" ? "active" : ""}`}
-            onClick={() => setActiveTab("timing")}>
-            时间
-          </div>
-          <div
-            className={`details-tab ${activeTab === "rule" ? "active" : ""}`}
-            onClick={() => setActiveTab("rule")}>
-            规则编辑
-          </div>
+          <button className="close-button" onClick={onClose}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
         </div>
 
         <div className="details-content">

@@ -110,6 +110,11 @@ const App: React.FC = () => {
       response: ""
     });
   };
+  
+  // 处理详情面板关闭
+  const handleDetailsClose = () => {
+    setSelectedRequest(null);
+  };
 
   // 处理规则保存
   const handleRuleSave = async () => {
@@ -422,6 +427,7 @@ const App: React.FC = () => {
                     getDomain={getDomain}
                     handleResizerMouseDown={handleResizerMouseDown}
                     detailsHeight={detailsHeight}
+                    onClose={handleDetailsClose}
                   />
                 )}
               </div>
