@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { sendToBackground } from "@plasmohq/messaging";
 import { Storage } from "@plasmohq/storage";
 
@@ -7,8 +7,9 @@ import Toolbar from "./Toolbar";
 import RequestList from "./RequestList";
 import RequestDetails from "./RequestDetails";
 import VerticalNavbar from "./VerticalNavbar";
-import { HomeIcon, NetworkIcon, RulesIcon, ApiIcon, FilesIcon, SessionsIcon } from "./icons";
-
+import { HomeIcon, NetworkIcon, ApiIcon, FilesIcon, SessionsIcon, RulesIcon } from "./icons";
+import RuleList from "./RuleList";
+import RuleDetails from "./RuleDetails";
 
 // 创建存储实例
 const storage = new Storage();
@@ -26,8 +27,10 @@ const App: React.FC = () => {
     response: ""
   });
   const [filterText, setFilterText] = useState<string>("");
+  const [ruleFilterText, setRuleFilterText] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("headers");
   const [detailsHeight, setDetailsHeight] = useState<number>(300);
+  const [ruleDetailsWidth, setRuleDetailsWidth] = useState<number>(400);
   const [debugEnabled, setDebugEnabled] = useState<boolean>(false);
   const [isToggling, setIsToggling] = useState<boolean>(false);
   const [activeSidebarTab, setActiveSidebarTab] = useState<string>("network");
@@ -95,11 +98,23 @@ const App: React.FC = () => {
     };
   }, [activeTab, selectedRequest]);
 
-  // 清除请求列表
+  // 处理清除请求
   const handleClearRequests = async () => {
-    await sendToBackground({ name: "clearRequests" });
+    await sendToBackground({
+      name: "clearRequests"
+    });
     setRequests([]);
     setSelectedRequest(null);
+  };
+  
+  // 处理清空规则
+  const handleClearRules = async () => {
+    if (confirm('确定要清空所有规则吗？')) {
+      await storage.set("rules", []);
+      setRules([]);
+      setSelectedRule(null);
+      setNewRule({ id: "", url: "", matchType: "exact", response: "" });
+    }
   };
 
   // 处理请求点击
@@ -193,15 +208,20 @@ const App: React.FC = () => {
     }
   };
 
-  // 过滤请求列表
-  const filteredRequests = requests.filter((req) => {
-    if (!filterText) return true;
-    return (
-      req.url.toLowerCase().includes(filterText.toLowerCase()) ||
-      req.method.toLowerCase().includes(filterText.toLowerCase()) ||
-      req.type.toLowerCase().includes(filterText.toLowerCase())
-    );
-  });
+  // 过滤请求
+  const filteredRequests = useMemo(() => {
+    return requests.filter(request => {
+      return request.url.toLowerCase().includes(filterText.toLowerCase());
+    });
+  }, [requests, filterText]);
+  
+  // 过滤规则
+  const filteredRules = useMemo(() => {
+    if (!ruleFilterText) return rules;
+    return rules.filter(rule => {
+      return rule.url.toLowerCase().includes(ruleFilterText.toLowerCase());
+    });
+  }, [rules, ruleFilterText]);
 
   // 获取请求的域名
   const getDomain = (url: string) => {
@@ -345,25 +365,46 @@ const App: React.FC = () => {
     }
   };
 
-  // 处理拖动改变详情面板高度
+  // 处理请求详情面板的调整大小
   const handleResizerMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     const startY = e.clientY;
     const startHeight = detailsHeight;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const newHeight = startHeight - (e.clientY - startY);
-      if (newHeight > 100 && newHeight < window.innerHeight - 200) {
-        setDetailsHeight(newHeight);
-      }
+      const deltaY = e.clientY - startY;
+      const newHeight = Math.max(200, startHeight - deltaY);
+      setDetailsHeight(newHeight);
     };
 
     const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
 
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+  
+  // 处理规则详情面板的调整大小
+  const handleRuleResizerMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = ruleDetailsWidth;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = startX - e.clientX;
+      const newWidth = Math.max(300, startWidth + deltaX);
+      setRuleDetailsWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   };
 
   // 切换侧边栏显示状态
@@ -405,13 +446,15 @@ const App: React.FC = () => {
         <div className="content-main">
           {activeSidebarTab === "network" && (
             <div className="network-view">
-              <Toolbar 
+              <Toolbar
                 handleClearRequests={handleClearRequests}
+                handleClearRules={handleClearRules}
                 filterText={filterText}
                 setFilterText={setFilterText}
                 debugEnabled={debugEnabled}
                 isToggling={isToggling}
                 handleDebugToggle={handleDebugToggle}
+                showRulesClear={false}
               />
               
               <div className="network-container">
@@ -445,45 +488,45 @@ const App: React.FC = () => {
 
           {activeSidebarTab === "rules" && (
             <div className="rules-view">
-              <div className="rules-header">
-                <h2 className="rules-title">规则列表</h2>
-                <button className="new-rule-button" onClick={() => {
-                  setNewRule({ id: "", url: "", matchType: "exact", response: "" });
-                  setActiveTab("rule");
-                }}>
-                  新建规则
-                </button>
-              </div>
+              <Toolbar
+                handleClearRequests={handleClearRequests}
+                handleClearRules={handleClearRules}
+                filterText={ruleFilterText}
+                setFilterText={setRuleFilterText}
+                debugEnabled={debugEnabled}
+                isToggling={isToggling}
+                handleDebugToggle={handleDebugToggle}
+                showRulesClear={true}
+              />
+              
               <div className="rules-container">
-                {rules.length > 0 ? (
-                  <div className="rules-list">
-                    {rules.map((rule) => (
-                      <div 
-                        key={rule.id} 
-                        className={`rule-item ${selectedRule?.id === rule.id ? 'selected' : ''}`}
-                        onClick={() => {
-                          setSelectedRule(rule);
-                          setNewRule(rule);
-                          setActiveTab("rule");
-                        }}
-                      >
-                        <div className="rule-url">{rule.url}</div>
-                        <div className="rule-match-type">匹配类型: {rule.matchType === "exact" ? "精确匹配" : 
-                                                    rule.matchType === "contains" ? "包含" : "正则表达式"}</div>
-                        <div className="rule-response-preview">
-                          {rule.response.substring(0, 50)}{rule.response.length > 50 ? '...' : ''}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rules-empty-state">
-                    <div className="rules-icon-container">
-                      <RulesIcon />
-                    </div>
-                    <p className="rules-empty-text">暂无规则</p>
-                    <p className="rules-empty-desc">点击上方的新建规则按钮添加你的第一条规则</p>
-                  </div>
+                <RuleList 
+                  rules={filteredRules}
+                  selectedRule={selectedRule}
+                  onRuleSelect={(rule) => {
+                    setSelectedRule(rule);
+                    setNewRule(rule);
+                    setActiveTab("rule");
+                  }}
+                  onNewRule={() => {
+                    setNewRule({ id: "", url: "", matchType: "exact", response: "" });
+                    setActiveTab("rule");
+                  }}
+                />
+                
+                {selectedRule && activeTab === "rule" && (
+                  <RuleDetails
+                    selectedRule={selectedRule}
+                    newRule={newRule}
+                    setNewRule={setNewRule}
+                    handleRuleSave={handleRuleSave}
+                    onClose={() => {
+                      setSelectedRule(null);
+                      setActiveTab("");
+                    }}
+                    handleResizerMouseDown={handleRuleResizerMouseDown}
+                    detailsWidth={ruleDetailsWidth}
+                  />
                 )}
               </div>
             </div>
