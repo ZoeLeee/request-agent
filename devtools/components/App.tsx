@@ -35,34 +35,39 @@ const App: React.FC = () => {
   const [showSidebar, setShowSidebar] = useState<boolean>(true);
 
   useEffect(() => {
-    // 获取当前标签页的请求
-    sendToBackground({
-      name: "getRequests"
-    }).then((response) => {
-      console.log("response: ", response);
-      setRequests(response);
-    });
+    // 初始化时加载数据
+    const initializeData = async () => {
+      try {
+        // 获取当前标签页的请求
+        const response = await sendToBackground({
+          name: "getRequests"
+        });
+        console.log("response: ", response);
+        setRequests(response);
+
+        // 获取存储的规则
+        await refreshRules();
+        
+        // 获取调试状态
+        const debugValue = await storage.get<boolean>("debugEnabled");
+        setDebugEnabled(debugValue || false);
+        
+        // 将当前标签页 ID 保存到存储中，使当前标签页成为调试目标
+        if (chrome.devtools?.inspectedWindow?.tabId) {
+          const currentTabId = chrome.devtools.inspectedWindow.tabId;
+          console.log(`当前标签页 ID: ${currentTabId}`);
+          await storage.set("inspectedTabId", currentTabId);
+        }
+      } catch (error) {
+        console.error("初始化数据失败:", error);
+      }
+    };
+
+    initializeData();
 
     // 当切换到响应标签时，尝试获取响应内容
     if (activeTab === "response" && selectedRequest) {
       fetchResponseContent(selectedRequest.url);
-    }
-
-    // 获取存储的规则
-    storage.get<Rule[]>("rules").then((storedRules = []) => {
-      setRules(storedRules);
-    });
-    
-    // 获取调试状态
-    storage.get<boolean>("debugEnabled").then((value) => {
-      setDebugEnabled(value || false);
-    });
-    
-    // 将当前标签页 ID 保存到存储中，使当前标签页成为调试目标
-    if (chrome.devtools?.inspectedWindow?.tabId) {
-      const currentTabId = chrome.devtools.inspectedWindow.tabId;
-      console.log(`当前标签页 ID: ${currentTabId}`);
-      storage.set("inspectedTabId", currentTabId);
     }
     
     // 当 DevTools 面板关闭时自动关闭调试功能
@@ -114,6 +119,17 @@ const App: React.FC = () => {
   // 处理详情面板关闭
   const handleDetailsClose = () => {
     setSelectedRequest(null);
+  };
+  
+  // 从存储中获取最新的规则
+  const refreshRules = async () => {
+    try {
+      const storedRules = await storage.get<Rule[]>("rules") || [];
+      console.log("已获取规则:", storedRules);
+      setRules(storedRules);
+    } catch (error) {
+      console.error("获取规则失败:", error);
+    }
   };
 
   // 处理规则保存
@@ -368,6 +384,11 @@ const App: React.FC = () => {
   // 处理导航项点击
   const handleNavItemClick = (id: string) => {
     setActiveSidebarTab(id);
+    
+    // 当切换到规则标签页时，刷新规则列表
+    if (id === "rules") {
+      refreshRules();
+    }
   };
 
   return (
@@ -381,18 +402,6 @@ const App: React.FC = () => {
       
       {/* 内容区域 */}
       <div className="content-area">
-        {/* 标题栏 */}
-        <div className="content-header">
-          <h1 className="content-title">
-            {activeSidebarTab === "network" ? "网络" : 
-             activeSidebarTab === "rules" ? "规则" : 
-             activeSidebarTab === "home" ? "首页" : 
-             activeSidebarTab === "apis" ? "APIs" : 
-             activeSidebarTab === "files" ? "文件" : "会话"}
-          </h1>
-        </div>
-
-        {/* 主内容 */}
         <div className="content-main">
           {activeSidebarTab === "network" && (
             <div className="network-view">
@@ -436,19 +445,46 @@ const App: React.FC = () => {
 
           {activeSidebarTab === "rules" && (
             <div className="rules-view">
+              <div className="rules-header">
+                <h2 className="rules-title">规则列表</h2>
+                <button className="new-rule-button" onClick={() => {
+                  setNewRule({ id: "", url: "", matchType: "exact", response: "" });
+                  setActiveTab("rule");
+                }}>
+                  新建规则
+                </button>
+              </div>
               <div className="rules-container">
-                <div className="rules-empty-state">
-                  <div className="rules-icon-container">
-                    <RulesIcon />
+                {rules.length > 0 ? (
+                  <div className="rules-list">
+                    {rules.map((rule) => (
+                      <div 
+                        key={rule.id} 
+                        className={`rule-item ${selectedRule?.id === rule.id ? 'selected' : ''}`}
+                        onClick={() => {
+                          setSelectedRule(rule);
+                          setNewRule(rule);
+                          setActiveTab("rule");
+                        }}
+                      >
+                        <div className="rule-url">{rule.url}</div>
+                        <div className="rule-match-type">匹配类型: {rule.matchType === "exact" ? "精确匹配" : 
+                                                    rule.matchType === "contains" ? "包含" : "正则表达式"}</div>
+                        <div className="rule-response-preview">
+                          {rule.response.substring(0, 50)}{rule.response.length > 50 ? '...' : ''}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <p className="rules-empty-text">暂无规则</p>
-                  <button className="new-rule-button" onClick={() => {
-                    setNewRule({ id: "", url: "", matchType: "exact", response: "" });
-                    setActiveTab("rule");
-                  }}>
-                    新建规则
-                  </button>
-                </div>
+                ) : (
+                  <div className="rules-empty-state">
+                    <div className="rules-icon-container">
+                      <RulesIcon />
+                    </div>
+                    <p className="rules-empty-text">暂无规则</p>
+                    <p className="rules-empty-desc">点击上方的新建规则按钮添加你的第一条规则</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

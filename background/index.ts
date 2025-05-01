@@ -283,6 +283,8 @@ async function handleDebuggerEvent(
   if (method === "Fetch.requestPaused" && params) {
     const { requestId, request, resourceType } = params
 
+    rules = await storage.get<Rule[]>("rules")
+
     // 检查是否有匹配的规则
     const matchedRule = rules.find(
       (rule) =>
