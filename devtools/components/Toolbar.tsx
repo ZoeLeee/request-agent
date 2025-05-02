@@ -1,4 +1,5 @@
 import React from "react";
+import { Button } from "primereact/button";
 
 interface ToolbarProps {
   handleClearRequests: () => void;
@@ -9,6 +10,7 @@ interface ToolbarProps {
   isToggling: boolean;
   handleDebugToggle: () => void;
   showRulesClear?: boolean;
+  onNewRule?: () => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -19,15 +21,37 @@ const Toolbar: React.FC<ToolbarProps> = ({
   debugEnabled,
   isToggling,
   handleDebugToggle,
-  showRulesClear = false
+  showRulesClear = false,
+  onNewRule
 }) => {
   return (
     <div className="toolbar">
-      <div className="toolbar-left">
+      <div className="toolbar-left flex gap-2">
         {showRulesClear ? (
-          <button className="toolbar-button danger" onClick={handleClearRules}>清空规则</button>
+          <>
+            <Button 
+              label="清空规则" 
+              severity="danger" 
+              size="small"
+              onClick={handleClearRules} 
+            />
+            {onNewRule && (
+              <Button 
+                label="新建规则" 
+                severity="success" 
+                size="small"
+                icon="pi pi-plus" 
+                onClick={onNewRule} 
+              />
+            )}
+          </>
         ) : (
-          <button className="toolbar-button" onClick={handleClearRequests}>清除请求</button>
+          <Button 
+            label="清除请求" 
+            severity="secondary" 
+            size="small"
+            onClick={handleClearRequests} 
+          />
         )}
       </div>
       <div className="toolbar-center">

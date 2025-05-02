@@ -1,5 +1,8 @@
 import React from "react";
 import type { RequestInfo } from "./types";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Tag } from "primereact/tag";
 
 interface RequestListProps {
   filteredRequests: RequestInfo[];
@@ -16,54 +19,87 @@ const RequestList: React.FC<RequestListProps> = ({
   getDomain,
   getPath
 }) => {
+  // Method template for displaying request method with tag
+  const methodBodyTemplate = (req: RequestInfo) => {
+    const method = String(req.method);
+    const severityMap: Record<string, "success" | "info" | "warning" | "danger"> = {
+      GET: "info",
+      POST: "success",
+      PUT: "warning",
+      DELETE: "danger",
+      PATCH: "warning",
+      OPTIONS: "info",
+      HEAD: "info"
+    };
+    
+    const severity = severityMap[method] || "info";
+    
+    return <Tag value={method} severity={severity} />
+  };
+  
+  // Status template for displaying status code
+  const statusBodyTemplate = (req: RequestInfo) => {
+    const status = req.responseStatus || 200;
+    let severity: "success" | "info" | "warning" | "danger" = "success";
+    
+    if (status >= 400 && status < 500) severity = "warning";
+    if (status >= 500) severity = "danger";
+    if (status >= 300 && status < 400) severity = "info";
+    
+    return <Tag value={status} severity={severity} />
+  };
+  
+  // Domain template for displaying host name
+  const domainBodyTemplate = (req: RequestInfo) => {
+    return <span title={getDomain(req.url)}>{getDomain(req.url)}</span>;
+  };
+  
+  // Path template for displaying URL path
+  const pathBodyTemplate = (req: RequestInfo) => {
+    return <span title={getPath(req.url)}>{getPath(req.url)}</span>;
+  };
+  
+  // Type template for displaying request type
+  const typeBodyTemplate = (req: RequestInfo) => {
+    return <span>{typeof req.type === "string" ? req.type : String(req.type)}</span>;
+  };
+  
+  // Initiator template for displaying initiator
+  const initiatorBodyTemplate = (req: RequestInfo) => {
+    return <span title={req.initiator ? String(req.initiator) : ""}>
+      {req.initiator ? String(req.initiator) : "-"}
+    </span>;
+  };
+  
+  // Time template for displaying timestamp
+  const timeBodyTemplate = (req: RequestInfo) => {
+    return <span>{new Date(req.timeStamp).toLocaleTimeString()}</span>;
+  };
+
   return (
     <div className="table-container">
-      <table className="network-table">
-        <thead>
-          <tr>
-            <th style={{ width: "50px" }}>名称</th>
-            <th style={{ width: "300px" }}>路径</th>
-            <th style={{ width: "80px" }}>方法</th>
-            <th style={{ width: "80px" }}>状态</th>
-            <th style={{ width: "80px" }}>类型</th>
-            <th style={{ width: "120px" }}>发起者</th>
-            <th style={{ width: "100px" }}>时间</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredRequests.map((req) => (
-            <tr
-              key={req.id}
-              onClick={() => handleRequestClick(req)}
-              className={
-                selectedRequest && selectedRequest.id === req.id
-                  ? "selected"
-                  : ""
-              }>
-              <td title={getDomain(req.url)}>{getDomain(req.url)}</td>
-              <td title={getPath(req.url)}>{getPath(req.url)}</td>
-              <td className={`method method-${String(req.method)}`}>
-                {String(req.method)}
-              </td>
-              <td className="status-success">{req.responseStatus || 200}</td>
-              <td>
-                {typeof req.type === "string" ? req.type : String(req.type)}
-              </td>
-              <td title={req.initiator ? String(req.initiator) : ""}>
-                {req.initiator ? String(req.initiator) : "-"}
-              </td>
-              <td>{new Date(req.timeStamp).toLocaleTimeString()}</td>
-            </tr>
-          ))}
-          {filteredRequests.length === 0 && (
-            <tr>
-              <td colSpan={7} style={{ textAlign: "center", padding: "20px" }}>
-                暂无请求记录
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <DataTable 
+        value={filteredRequests} 
+        selectionMode="single"
+        selection={selectedRequest}
+        onSelectionChange={(e) => handleRequestClick(e.value)}
+        emptyMessage="暂无请求记录"
+        scrollable 
+        scrollHeight="flex"
+        stripedRows
+        className="w-full"
+        dataKey="id"
+        tableStyle={{ minWidth: '50rem' }}
+        rowClassName={() => 'cursor-pointer'}
+      >
+        <Column field="domain" header="名称" body={domainBodyTemplate} style={{ width: '150px' }} />
+        <Column field="path" header="路径" body={pathBodyTemplate} style={{ width: '300px' }} />
+        <Column field="method" header="方法" body={methodBodyTemplate} style={{ width: '100px' }} />
+        <Column field="status" header="状态" body={statusBodyTemplate} style={{ width: '100px' }} />
+        <Column field="type" header="类型" body={typeBodyTemplate} style={{ width: '100px' }} />
+        <Column field="initiator" header="发起者" body={initiatorBodyTemplate} style={{ width: '150px' }} />
+        <Column field="time" header="时间" body={timeBodyTemplate} style={{ width: '120px' }} />
+      </DataTable>
     </div>
   );
 };

@@ -117,6 +117,10 @@ const App: React.FC = () => {
                 isToggling={isToggling}
                 handleDebugToggle={handleDebugToggle}
                 showRulesClear={true}
+                onNewRule={() => {
+                  setNewRule({ id: "", url: "", matchType: "exact", response: "" });
+                  setActiveTab("rule");
+                }}
               />
               
               <div className="rules-container">
