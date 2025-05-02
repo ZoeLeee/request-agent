@@ -2,7 +2,7 @@
 module.exports = {
   mode: "jit",
   darkMode: "class",
-  content: ["./**/*.tsx"],
+  content: ["devtools/**/*.tsx"],
   plugins: []
 }
 
