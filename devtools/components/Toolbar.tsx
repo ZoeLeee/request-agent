@@ -1,16 +1,16 @@
-import React from "react";
-import { Button } from "primereact/button";
+import { Button } from "primereact/button"
+import React from "react"
 
 interface ToolbarProps {
-  handleClearRequests: () => void;
-  handleClearRules?: () => void;
-  filterText: string;
-  setFilterText: (text: string) => void;
-  debugEnabled: boolean;
-  isToggling: boolean;
-  handleDebugToggle: () => void;
-  showRulesClear?: boolean;
-  onNewRule?: () => void;
+  handleClearRequests: () => void
+  handleClearRules?: () => void
+  filterText: string
+  setFilterText: (text: string) => void
+  debugEnabled: boolean
+  isToggling: boolean
+  handleDebugToggle: () => void
+  showRulesClear?: boolean
+  onNewRule?: () => void
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -29,28 +29,28 @@ const Toolbar: React.FC<ToolbarProps> = ({
       <div className="toolbar-left flex gap-2">
         {showRulesClear ? (
           <>
-            <Button 
-              label="清空规则" 
-              severity="danger" 
+            <Button
+              label="清空规则"
+              severity="danger"
               size="small"
-              onClick={handleClearRules} 
+              onClick={handleClearRules}
             />
             {onNewRule && (
-              <Button 
-                label="新建规则" 
-                severity="success" 
+              <Button
+                label="新建规则"
+                severity="success"
                 size="small"
-                icon="pi pi-plus" 
-                onClick={onNewRule} 
+                icon="pi pi-plus"
+                onClick={onNewRule}
               />
             )}
           </>
         ) : (
-          <Button 
-            label="清除请求" 
-            severity="secondary" 
+          <Button
+            label="清除请求"
+            severity="danger"
             size="small"
-            onClick={handleClearRequests} 
+            onClick={handleClearRequests}
           />
         )}
       </div>
@@ -66,37 +66,39 @@ const Toolbar: React.FC<ToolbarProps> = ({
       <div className="toolbar-right">
         <div className="debug-toggle">
           <label className="debug-label">调试模式:</label>
-          <button 
-            className={`debug-button ${debugEnabled ? 'enabled' : 'disabled'}`}
+          <Button
             onClick={handleDebugToggle}
             disabled={isToggling}
-          >
+            severity={debugEnabled ? "success" : "danger"}>
             {isToggling ? (
               <>
-                <span style={{ visibility: isToggling ? 'hidden' : 'visible' }}>
-                  {debugEnabled ? '已开启' : '已关闭'}
+                <span style={{ visibility: isToggling ? "hidden" : "visible" }}>
+                  {debugEnabled ? "已开启" : "已关闭"}
                 </span>
-                <span style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
+                <span
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}>
                   切换中...
                 </span>
               </>
+            ) : debugEnabled ? (
+              "已开启"
             ) : (
-              debugEnabled ? '已开启' : '已关闭'
+              "已关闭"
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Toolbar;
+export default Toolbar

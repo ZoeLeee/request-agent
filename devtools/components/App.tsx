@@ -97,8 +97,6 @@ const App: React.FC = () => {
                     setNewRule={setNewRule}
                     handleRuleSave={handleRuleSave}
                     getDomain={getDomain}
-                    handleResizerMouseDown={handleResizerMouseDown}
-                    detailsHeight={detailsHeight}
                     onClose={handleDetailsClose}
                   />
                 )}
@@ -148,8 +146,6 @@ const App: React.FC = () => {
                       setSelectedRule(null);
                       setActiveTab("");
                     }}
-                    handleResizerMouseDown={handleRuleResizerMouseDown}
-                    detailsWidth={ruleDetailsWidth}
                   />
                 )}
               </div>

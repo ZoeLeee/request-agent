@@ -1,5 +1,11 @@
 import React from "react";
 import type { RequestInfo, Rule } from "./types";
+import { Sidebar } from "primereact/sidebar";
+import { TabView, TabPanel } from "primereact/tabview";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { Dropdown } from "primereact/dropdown";
+import { InputTextarea } from "primereact/inputtextarea";
 
 interface RequestDetailsProps {
   selectedRequest: RequestInfo;
@@ -11,8 +17,9 @@ interface RequestDetailsProps {
   setNewRule: (rule: Rule) => void;
   handleRuleSave: () => void;
   getDomain: (url: string) => string;
-  handleResizerMouseDown: (e: React.MouseEvent) => void;
-  detailsHeight: number;
+  // No longer needed with Sidebar component
+  // handleResizerMouseDown: (e: React.MouseEvent) => void;
+  // detailsHeight: number;
   onClose: () => void;
 }
 
@@ -26,105 +33,114 @@ const RequestDetails: React.FC<RequestDetailsProps> = ({
   setNewRule,
   handleRuleSave,
   getDomain,
-  handleResizerMouseDown,
-  detailsHeight,
   onClose
 }) => {
+  // Convert string tab names to numeric index for TabView
+  const getActiveIndex = () => {
+    switch(activeTab) {
+      case "headers": return 0;
+      case "response": return 1;
+      case "rule": return 2;
+      default: return 0;
+    }
+  };
+  
+  // Handle TabView index change and convert to string tab names
+  const handleTabChange = (e: { index: number }) => {
+    switch(e.index) {
+      case 0: setActiveTab("headers"); break;
+      case 1: setActiveTab("response"); break;
+      case 2: setActiveTab("rule"); break;
+    }
+  };
   return (
-    <div className="fixed right-0 top-0 w-1/2 h-full z-10">
-      <div className="details-panel h-full">
-        <div className="details-header">
-          <div className="details-tabs">
-            <div
-              className={`details-tab ${activeTab === "headers" ? "active" : ""}`}
-              onClick={() => setActiveTab("headers")}>
-              标头
-            </div>
-            <div
-              className={`details-tab ${activeTab === "response" ? "active" : ""}`}
-              onClick={() => setActiveTab("response")}>
-              响应
-            </div>
-            <div
-              className={`details-tab ${activeTab === "rule" ? "active" : ""}`}
-              onClick={() => setActiveTab("rule")}>
-              规则编辑
-            </div>
-          </div>
-          <button className="close-button" onClick={onClose}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </div>
-
-        <div className="details-content">
-          {activeTab === "headers" && <HeadersTab selectedRequest={selectedRequest} getDomain={getDomain} />}
-          {activeTab === "response" && <ResponseTab selectedRequest={selectedRequest} responseContent={responseContent} fetchResponseContent={fetchResponseContent} />}
-          {activeTab === "rule" && <RuleTab newRule={newRule} setNewRule={setNewRule} handleRuleSave={handleRuleSave} />}
-        </div>
-      </div>
-    </div>
+    <Sidebar 
+      visible={true} 
+      position="right" 
+      onHide={onClose}
+      header="请求详情"
+      className="w-1/2 md:w-30rem"
+      blockScroll
+    >
+      <TabView 
+        activeIndex={getActiveIndex()} 
+        onTabChange={handleTabChange}
+        className="request-details-tabs"
+      >
+        <TabPanel header="标头">
+          <HeadersTab selectedRequest={selectedRequest} getDomain={getDomain} />
+        </TabPanel>
+        <TabPanel header="响应">
+          <ResponseTab selectedRequest={selectedRequest} responseContent={responseContent} fetchResponseContent={fetchResponseContent} />
+        </TabPanel>
+        <TabPanel header="规则编辑">
+          <RuleTab newRule={newRule} setNewRule={setNewRule} handleRuleSave={handleRuleSave} />
+        </TabPanel>
+      </TabView>
+    </Sidebar>
   );
 };
 
-// 标头标签页组件
+// Headers tab component
 const HeadersTab: React.FC<{ selectedRequest: RequestInfo; getDomain: (url: string) => string }> = ({ selectedRequest, getDomain }) => {
   return (
-    <div>
-      <h3>常规</h3>
-      <table>
-        <tbody>
-          <tr>
-            <th>请求 URL</th>
-            <td>
-              {typeof selectedRequest.url === "string"
-                ? selectedRequest.url
-                : String(selectedRequest.url)}
-            </td>
-          </tr>
-          <tr>
-            <th>请求方法</th>
-            <td>
-              {typeof selectedRequest.method === "string"
-                ? selectedRequest.method
-                : String(selectedRequest.method)}
-            </td>
-          </tr>
-          <tr>
-            <th>状态码</th>
-            <td>{selectedRequest.responseStatus || "200"} {selectedRequest.responseStatusText || "OK"}</td>
-          </tr>
-          <tr>
-            <th>远程地址</th>
-            <td>{getDomain(String(selectedRequest.url))}</td>
-          </tr>
-          <tr>
-            <th>引用者策略</th>
-            <td>strict-origin-when-cross-origin</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>响应标头</h3>
-      <table>
-        <tbody>
-          {selectedRequest.responseHeaders ? (
-            Object.entries(selectedRequest.responseHeaders).map(([key, value]) => (
-              <tr key={key}>
-                <th>{key}</th>
-                <td>{typeof value === "string" ? value : JSON.stringify(value)}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <th>content-type</th>
-              <td>application/json</td>
+    <div className="p-2">
+      <h3 className="text-lg font-semibold mb-2">常规</h3>
+      <div className="border rounded-md mb-4 overflow-hidden">
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr className="border-b">
+              <th className="p-2 bg-gray-50 text-left font-medium w-1/3">请求 URL</th>
+              <td className="p-2 break-all">
+                {typeof selectedRequest.url === "string"
+                  ? selectedRequest.url
+                  : String(selectedRequest.url)}
+              </td>
             </tr>
-          )}
-        </tbody>
-      </table>
+            <tr className="border-b">
+              <th className="p-2 bg-gray-50 text-left font-medium">请求方法</th>
+              <td className="p-2">
+                {typeof selectedRequest.method === "string"
+                  ? selectedRequest.method
+                  : String(selectedRequest.method)}
+              </td>
+            </tr>
+            <tr className="border-b">
+              <th className="p-2 bg-gray-50 text-left font-medium">状态码</th>
+              <td className="p-2">{selectedRequest.responseStatus || "200"} {selectedRequest.responseStatusText || "OK"}</td>
+            </tr>
+            <tr className="border-b">
+              <th className="p-2 bg-gray-50 text-left font-medium">远程地址</th>
+              <td className="p-2">{getDomain(String(selectedRequest.url))}</td>
+            </tr>
+            <tr>
+              <th className="p-2 bg-gray-50 text-left font-medium">引用者策略</th>
+              <td className="p-2">strict-origin-when-cross-origin</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 className="text-lg font-semibold mb-2">响应标头</h3>
+      <div className="border rounded-md mb-4 overflow-hidden">
+        <table className="w-full border-collapse">
+          <tbody>
+            {selectedRequest.responseHeaders ? (
+              Object.entries(selectedRequest.responseHeaders).map(([key, value], index, array) => (
+                <tr key={key} className={index < array.length - 1 ? "border-b" : ""}>
+                  <th className="p-2 bg-gray-50 text-left font-medium w-1/3">{key}</th>
+                  <td className="p-2 break-all">{typeof value === "string" ? value : JSON.stringify(value)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <th className="p-2 bg-gray-50 text-left font-medium w-1/3">content-type</th>
+                <td className="p-2">application/json</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <h3>请求标头</h3>
       <table>
@@ -163,81 +179,85 @@ const ResponseTab: React.FC<{
   fetchResponseContent 
 }) => {
   return (
-    <div>
-      <h3>状态信息</h3>
-      <table>
-        <tbody>
-          <tr>
-            <th>状态码</th>
-            <td>
-              {selectedRequest.responseStatus || "200"} {selectedRequest.responseStatusText || "OK"}
-            </td>
-          </tr>
-          {selectedRequest.responseSize && (
-            <tr>
-              <th>响应大小</th>
-              <td>
-                {typeof selectedRequest.responseSize === "number"
-                  ? (selectedRequest.responseSize / 1024).toFixed(2)
-                  : "0"} KB
+    <div className="p-2">
+      <h3 className="text-lg font-semibold mb-2">常规</h3>
+      <div className="border rounded-md mb-4 overflow-hidden">
+        <table className="w-full border-collapse">
+          <tbody>
+            <tr className="border-b">
+              <th className="p-2 bg-gray-50 text-left font-medium w-1/3">请求 URL</th>
+              <td className="p-2 break-all">
+                {typeof selectedRequest.url === "string"
+                  ? selectedRequest.url
+                  : String(selectedRequest.url)}
               </td>
             </tr>
-          )}
-          {selectedRequest.responseTime && (
-            <tr>
-              <th>响应时间</th>
-              <td>
-                {typeof selectedRequest.responseTime === "number"
-                  ? selectedRequest.responseTime.toFixed(2)
-                  : String(selectedRequest.responseTime)} ms
+            <tr className="border-b">
+              <th className="p-2 bg-gray-50 text-left font-medium">请求方法</th>
+              <td className="p-2">
+                {typeof selectedRequest.method === "string"
+                  ? selectedRequest.method
+                  : String(selectedRequest.method)}
               </td>
             </tr>
-          )}
-        </tbody>
-      </table>
-
-      <h3>响应头</h3>
-      <table>
-        <tbody>
-          {selectedRequest.responseHeaders ? (
-            Object.entries(selectedRequest.responseHeaders).map(([key, value]) => (
-              <tr key={key}>
-                <th>{key}</th>
-                <td>{typeof value === "string" ? value : JSON.stringify(value)}</td>
+            {selectedRequest.responseTime && (
+              <tr>
+                <th className="p-2 bg-gray-50 text-left font-medium">响应时间</th>
+                <td className="p-2">
+                  {typeof selectedRequest.responseTime === "number"
+                    ? selectedRequest.responseTime.toFixed(2)
+                    : String(selectedRequest.responseTime)} ms
+                </td>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <th>content-type</th>
-              <td>application/json</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      <h3>响应内容</h3>
+      <h3 className="text-lg font-semibold mb-2">响应头</h3>
+      <div className="border rounded-md mb-4 overflow-hidden">
+        <table className="w-full border-collapse">
+          <tbody>
+            {selectedRequest.responseHeaders ? (
+              Object.entries(selectedRequest.responseHeaders).map(([key, value], index, array) => (
+                <tr key={key} className={index < array.length - 1 ? "border-b" : ""}>
+                  <th className="p-2 bg-gray-50 text-left font-medium w-1/3">{key}</th>
+                  <td className="p-2 break-all">{typeof value === "string" ? value : JSON.stringify(value)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <th className="p-2 bg-gray-50 text-left font-medium w-1/3">content-type</th>
+                <td className="p-2">application/json</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 className="text-lg font-semibold mb-2">响应内容</h3>
       {selectedRequest.responseContent ? (
-        <pre className="response-content">
+        <pre className="bg-gray-50 p-3 rounded-md overflow-auto max-h-60 text-sm">
           {typeof selectedRequest.responseContent === "string"
             ? selectedRequest.responseContent
             : JSON.stringify(selectedRequest.responseContent, null, 2)}
         </pre>
       ) : (
-        <div className="response-empty">
+        <div className="border rounded-md p-4">
           {responseContent ? (
-            <pre className="response-content">{responseContent}</pre>
+            <pre className="bg-gray-50 p-3 rounded-md overflow-auto max-h-60 text-sm">{responseContent}</pre>
           ) : (
-            <div className="response-message">
-              <p>
+            <div className="text-center py-4">
+              <p className="mb-3 text-gray-600">
                 {selectedRequest.responseType === "image"
                   ? "图片内容无法直接显示"
                   : "由于浏览器安全限制，无法直接获取响应体内容。"}
               </p>
-              <button
-                className="fetch-button"
-                onClick={() => fetchResponseContent(selectedRequest.url)}>
-                尝试获取内容
-              </button>
+              <Button
+                label="尝试获取内容"
+                onClick={() => fetchResponseContent(selectedRequest.url)}
+                className="p-button-outlined"
+              />
             </div>
           )}
         </div>
@@ -248,7 +268,7 @@ const ResponseTab: React.FC<{
 
 
 
-// 规则标签页组件
+// Rule tab component
 const RuleTab: React.FC<{ 
   newRule: Rule; 
   setNewRule: (rule: Rule) => void; 
@@ -258,71 +278,64 @@ const RuleTab: React.FC<{
   setNewRule, 
   handleRuleSave 
 }) => {
+  // Match type options for dropdown
+  const matchTypeOptions = [
+    { label: '精确匹配', value: 'exact' },
+    { label: '包含', value: 'contains' },
+    { label: '正则表达式', value: 'regex' }
+  ];
+
   return (
-    <div>
-      <h3>编辑拦截规则</h3>
-      <div style={{ marginBottom: "10px" }}>
-        <label style={{ display: "block", marginBottom: "5px" }}>
+    <div className="p-2">
+      <h3 className="text-lg font-semibold mb-3">编辑拦截规则</h3>
+      
+      <div className="field mb-4">
+        <label htmlFor="rule-url" className="block text-sm font-medium mb-2">
           URL 模式:
         </label>
-        <input
-          type="text"
-          style={{ width: "100%", padding: "5px" }}
+        <InputText
+          id="rule-url"
+          className="w-full"
           value={newRule.url}
-          onChange={(e) =>
-            setNewRule({ ...newRule, url: e.target.value })
-          }
+          onChange={(e) => setNewRule({ ...newRule, url: e.target.value })}
         />
       </div>
-      <div style={{ marginBottom: "10px" }}>
-        <label style={{ display: "block", marginBottom: "5px" }}>
+      
+      <div className="field mb-4">
+        <label htmlFor="match-type" className="block text-sm font-medium mb-2">
           匹配类型:
         </label>
-        <select
-          style={{ width: "100%", padding: "5px" }}
+        <Dropdown
+          id="match-type"
+          className="w-full"
           value={newRule.matchType}
-          onChange={(e) =>
-            setNewRule({
-              ...newRule,
-              matchType: e.target.value as
-                | "exact"
-                | "contains"
-                | "regex"
-            })
-          }>
-          <option value="exact">精确匹配</option>
-          <option value="contains">包含</option>
-          <option value="regex">正则表达式</option>
-        </select>
-      </div>
-      <div style={{ marginBottom: "10px" }}>
-        <label style={{ display: "block", marginBottom: "5px" }}>
-          自定义响应 (JSON):
-        </label>
-        <textarea
-          style={{
-            width: "100%",
-            height: "100px",
-            padding: "5px"
-          }}
-          value={newRule.response}
-          onChange={(e) =>
-            setNewRule({ ...newRule, response: e.target.value })
-          }
+          options={matchTypeOptions}
+          onChange={(e) => setNewRule({ ...newRule, matchType: e.value })}
         />
       </div>
-      <button
-        style={{
-          padding: "5px 10px",
-          backgroundColor: "#4285f4",
-          color: "white",
-          border: "none",
-          borderRadius: "3px",
-          cursor: "pointer"
-        }}
-        onClick={handleRuleSave}>
-        保存规则
-      </button>
+      
+      <div className="field mb-4">
+        <label htmlFor="response-content" className="block text-sm font-medium mb-2">
+          自定义响应 (JSON):
+        </label>
+        <InputTextarea
+          id="response-content"
+          rows={6}
+          className="w-full"
+          value={newRule.response}
+          onChange={(e) => setNewRule({ ...newRule, response: e.target.value })}
+          autoResize
+        />
+      </div>
+      
+      <div className="flex justify-end">
+        <Button
+          label="保存规则"
+          icon="pi pi-save"
+          className="p-button-success"
+          onClick={handleRuleSave}
+        />
+      </div>
     </div>
   );
 };
