@@ -61,7 +61,9 @@ let inspectedTabId: number | null = null
 
 // 检查是否是当前正在调试的标签页
 function isInspectedTab(tabId: number): boolean {
-  return inspectedTabId === tabId
+  // 严格比较，确保只有devtool面板指定的标签页被调试
+  console.log(`检查是否为调试页: tabId=${tabId}, inspectedTabId=${inspectedTabId}`)
+  return inspectedTabId !== null && inspectedTabId === tabId
 }
 
 storage.watch({
@@ -76,7 +78,11 @@ storage.watch({
     if (debugEnabled) {
       // 如果有已设置的检查标签页，则连接到该标签页
       if (inspectedTabId) {
+        console.log(`开启调试模式，连接到devtool指定的标签页: inspectedTabId=${inspectedTabId}`)
+        // 仅连接到devtool面板指定的标签页
         attachDebugger(inspectedTabId)
+      } else {
+        console.log(`开启调试模式，但没有指定调试的标签页ID`)
       }
     } else {
       // 断开所有 debugger 连接
@@ -185,6 +191,8 @@ const debuggerConnections: {
 chrome.tabs.onCreated.addListener((tab) => {
   // 只对当前正在调试的标签页进行连接
   if (tab.id && debugEnabled && isInspectedTab(tab.id)) {
+    // 确保只有devtool面板指定的标签页被调试
+    console.log(`新标签页创建，并且是devtool指定的调试页: tabId=${tab.id}`)
     attachDebugger(tab.id)
   }
 })
@@ -198,6 +206,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     debugEnabled &&
     isInspectedTab(tab.id)
   ) {
+    console.log(`标签页更新完成，且是devtool指定的调试页: tabId=${tab.id}, inspectedTabId=${inspectedTabId}`)
     // 等待一小段时间再连接，确保页面已完全加载
     setTimeout(() => {
       attachDebugger(tab.id)
@@ -251,6 +260,23 @@ async function attachDebugger(tabId: number) {
     chrome.debugger.onEvent.addListener(handleDebuggerEvent)
   } catch (error) {
     console.error(`连接 debugger 失败: tabId=${tabId}`, error)
+    // 连接失败时向用户端发送错误信息，并结束 loading 状态
+    // 确保在错误情况下更新存储并通知界面
+    try {
+      await storage.set("debugEnabled", false)
+      console.log('已关闭调试模式，由于连接失败')
+    } catch (storageError) {
+      console.error('无法更新存储状态:', storageError)
+    }
+
+    // 使用 messaging 发送错误信息
+    chrome.runtime.sendMessage({
+      name: "debugError",
+      body: {
+        type: "connect",
+        message: `连接 debugger 失败: ${error.message || '未知错误'}`
+      }
+    })
   }
 }
 
@@ -263,6 +289,17 @@ async function detachDebugger(tabId: number) {
       delete debuggerConnections[tabId]
     } catch (error) {
       console.error(`断开 debugger 连接失败: tabId=${tabId}`, error)
+      // 断开连接失败时也向 devtool 页面发送消息，结束 loading 状态
+      await storage.set("debugEnabled", false)
+      
+      // 使用 messaging 发送错误信息
+      chrome.runtime.sendMessage({
+        name: "debugError",
+        body: {
+          type: "detach",
+          message: `断开 debugger 连接失败: ${error.message || '未知错误'}`
+        }
+      })
     }
   }
 }

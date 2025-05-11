@@ -37,6 +37,13 @@ declare global {
       };
       response: void;
     };
+    debugError: {
+      body: {
+        type: string;
+        message: string;
+      };
+      response: void;
+    };
   }
 }
 
