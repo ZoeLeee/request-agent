@@ -1,5 +1,6 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
+import { DefaultStorage } from "~utils/storage"
 
 // 存储拦截到的请求
 // 定义 ResourceType 类型，与 Chrome 网络请求 API 一致
@@ -53,7 +54,7 @@ interface Rule {
 }
 
 export let requests: RequestInfo[] = []
-const storage = new Storage()
+const storage = DefaultStorage
 
 let rules: Rule[] = []
 let debugEnabled = false

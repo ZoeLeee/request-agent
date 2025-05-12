@@ -26,7 +26,7 @@ const RuleDetails: React.FC<RuleDetailsProps> = ({
 }) => {
   // Match type options for dropdown
   const matchTypeOptions = [
-    { label: '精确匹配', value: 'exact' },
+  { label: '精确匹配', value: 'exact' },
     { label: '包含', value: 'contains' },
     { label: '正则表达式', value: 'regex' }
   ];

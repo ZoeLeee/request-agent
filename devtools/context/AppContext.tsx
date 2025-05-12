@@ -20,9 +20,9 @@ import {
   SessionsIcon
 } from "../components/icons"
 import type { RequestInfo, Rule } from "../components/types"
+import { DefaultStorage } from "~utils/storage"
 
-// 创建存储实例
-const storage = new Storage()
+const storage = DefaultStorage
 
 // 定义Context的类型
 interface AppContextType {
@@ -284,12 +284,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       let updatedRules: Rule[] = []
+      // 查找具有相同URL和匹配方式的现有规则
+      const existingRuleIndex = rules.findIndex(
+        (rule) => rule.url === newRule.url && rule.matchType === newRule.matchType
+      )
 
       if (selectedRule) {
         // 更新现有规则
         updatedRules = rules.map((rule) =>
           rule.id === selectedRule.id
             ? { ...newRule, id: selectedRule.id }
+            : rule
+        )
+      } else if (existingRuleIndex !== -1) {
+        // 如果找到具有相同URL和匹配方式的规则，更新该规则
+        updatedRules = rules.map((rule, index) =>
+          index === existingRuleIndex
+            ? { ...newRule, id: rule.id }
             : rule
         )
       } else {

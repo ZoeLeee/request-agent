@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 
 import { sendToBackground } from "@plasmohq/messaging"
-import { Storage } from "@plasmohq/storage"
+import { DefaultStorage } from "~utils/storage"
 
-const storage = new Storage()
+const storage = DefaultStorage
 
 interface RequestInfo {
   id: string
