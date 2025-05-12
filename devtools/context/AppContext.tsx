@@ -19,7 +19,7 @@ import {
   RulesIcon,
   SessionsIcon
 } from "../components/icons"
-import type { RequestInfo, Rule } from "../components/types"
+import type { RequestInfo, Rule } from "~types"
 import { DefaultStorage } from "~utils/storage"
 
 const storage = DefaultStorage

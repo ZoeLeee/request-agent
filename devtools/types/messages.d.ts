@@ -1,4 +1,4 @@
-import type { RequestInfo, Rule } from "../components/types";
+import type { RequestInfo, Rule } from "~types";
 
 // 定义后台消息的元数据类型
 declare global {

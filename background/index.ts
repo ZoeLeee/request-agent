@@ -1,57 +1,6 @@
-import type { PlasmoMessaging } from "@plasmohq/messaging"
-import { Storage } from "@plasmohq/storage"
 import { DefaultStorage } from "~utils/storage"
-
-// 存储拦截到的请求
-// 定义 ResourceType 类型，与 Chrome 网络请求 API 一致
-type ResourceType =
-  | "main_frame"
-  | "sub_frame"
-  | "stylesheet"
-  | "script"
-  | "image"
-  | "font"
-  | "object"
-  | "xmlhttprequest"
-  | "ping"
-  | "csp_report"
-  | "media"
-  | "websocket"
-  | "webbundle"
-  | "other"
-
-interface RequestInfo {
-  id: string
-  url: string
-  method: string
-  timeStamp: number
-  type: ResourceType
-  tabId: number
-  frameId: number
-  parentFrameId: number
-  initiator?: string
-  // 请求头字段
-  requestHeaders?: { [key: string]: string }
-  // 响应相关字段
-  responseStatus?: number
-  responseStatusText?: string
-  responseHeaders?: { [key: string]: string }
-  responseContent?: string
-  responseTime?: number
-  responseSize?: number
-  responseType?: string
-  // 自定义响应���段
-  shouldIntercept?: boolean
-  customResponse?: string
-}
-
-// 存储规则的接口
-interface Rule {
-  id: string
-  url: string
-  matchType: "exact" | "contains" | "regex"
-  response: string
-}
+import { attachDebugger, detachDebugger, setRequestsRef } from "~utils/debugger"
+import type { RequestInfo, ResourceType, Rule } from "~types"
 
 export let requests: RequestInfo[] = []
 const storage = DefaultStorage
@@ -81,7 +30,7 @@ storage.watch({
       if (inspectedTabId) {
         console.log(`开启调试模式，连接到devtool指定的标签页: inspectedTabId=${inspectedTabId}`)
         // 仅连接到devtool面板指定的标签页
-        attachDebugger(inspectedTabId)
+        attachDebugger(inspectedTabId, debugEnabled)
       } else {
         console.log(`开启调试模式，但没有指定调试的标签页ID`)
       }
@@ -97,7 +46,7 @@ storage.watch({
     const tabId = c.newValue
     if (tabId && debugEnabled) {
       // 如果调试模式已开启，则连接到该标签页
-      attachDebugger(tabId)
+      attachDebugger(tabId, debugEnabled)
     }
   }
 })
@@ -194,12 +143,12 @@ chrome.tabs.onCreated.addListener((tab) => {
   if (tab.id && debugEnabled && isInspectedTab(tab.id)) {
     // 确保只有devtool面板指定的标签页被调试
     console.log(`新标签页创建，并且是devtool指定的调试页: tabId=${tab.id}`)
-    attachDebugger(tab.id)
+    attachDebugger(tab.id, debugEnabled)
   }
 })
 
 // 监听标签页更新事件
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   // 只对当前正在调试的标签页进行连接
   if (
     changeInfo.status === "complete" &&
@@ -210,7 +159,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     console.log(`标签页更新完成，且是devtool指定的调试页: tabId=${tab.id}, inspectedTabId=${inspectedTabId}`)
     // 等待一小段时间再连接，确保页面已完全加载
     setTimeout(() => {
-      attachDebugger(tab.id)
+      attachDebugger(tab.id, debugEnabled)
     }, 1000) // 增加延迟时间，确保页面完全加载
   }
 })
@@ -220,229 +169,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   detachDebugger(tabId)
 })
 
-// 连接到 debugger
-async function attachDebugger(tabId: number) {
-  if (!tabId || !debugEnabled) {
-    return
-  }
-  if (debuggerConnections[tabId] && debuggerConnections[tabId].attached) {
-    return
-  }
-
-  try {
-    // 先尝试断开现有连接，防止冲突
-    try {
-      await chrome.debugger.detach({ tabId })
-    } catch (e) {
-      // 忽略错误，可能本来就没有连接
-    }
-
-    // 连接到 debugger
-    await chrome.debugger.attach({ tabId }, "1.3")
-    console.log(`成功连接到 debugger: tabId=${tabId}`)
-
-    // 初始化连接状态
-    debuggerConnections[tabId] = {
-      attached: true,
-      requestMap: new Map()
-    }
-
-    // 启用网络事件
-    await chrome.debugger.sendCommand({ tabId }, "Network.enable")
-    console.log(`已启用 Network 域: tabId=${tabId}`)
-
-    // 启用 Fetch 域，允许拦截请求
-    await chrome.debugger.sendCommand({ tabId }, "Fetch.enable", {
-      patterns: [{ urlPattern: "*" }]
-    })
-    console.log(`已启用 Fetch 域: tabId=${tabId}`)
-
-    // 监听请求发送事件
-    chrome.debugger.onEvent.addListener(handleDebuggerEvent)
-  } catch (error) {
-    console.error(`连接 debugger 失败: tabId=${tabId}`, error)
-    // 连接失败时向用户端发送错误信息，并结束 loading 状态
-    // 确保在错误情况下更新存储并通知界面
-    try {
-      await storage.set("debugEnabled", false)
-      console.log('已关闭调试模式，由于连接失败')
-    } catch (storageError) {
-      console.error('无法更新存储状态:', storageError)
-    }
-
-    // 使用 messaging 发送错误信息
-    chrome.runtime.sendMessage({
-      name: "debugError",
-      body: {
-        type: "connect",
-        message: `连接 debugger 失败: ${error.message || '未知错误'}`
-      }
-    })
-  }
-}
-
-// 断开与 debugger 的连接
-async function detachDebugger(tabId: number) {
-  if (debuggerConnections[tabId] && debuggerConnections[tabId].attached) {
-    try {
-      await chrome.debugger.detach({ tabId })
-      console.log(`断开与 debugger 的连接: tabId=${tabId}`)
-      delete debuggerConnections[tabId]
-    } catch (error) {
-      console.error(`断开 debugger 连接失败: tabId=${tabId}`, error)
-      // 断开连接失败时也向 devtool 页面发送消息，结束 loading 状态
-      await storage.set("debugEnabled", false)
-      
-      // 使用 messaging 发送错误信息
-      chrome.runtime.sendMessage({
-        name: "debugError",
-        body: {
-          type: "detach",
-          message: `断开 debugger 连接失败: ${error.message || '未知错误'}`
-        }
-      })
-    }
-  }
-}
-
-// 处理 debugger 事件
-async function handleDebuggerEvent(
-  debuggeeId: chrome.debugger.Debuggee,
-  method: string,
-  params?: any
-) {
-  const { tabId } = debuggeeId
-
-  if (!tabId || !debuggerConnections[tabId]) {
-    return
-  }
-
-  // 处理 Fetch 请求拦截事件
-  if (method === "Fetch.requestPaused" && params) {
-    const { requestId, request, resourceType } = params
-
-    rules = await storage.get<Rule[]>("rules")
-
-    // 检查是否有匹配的规则
-    const matchedRule = rules.find(
-      (rule) =>
-        (rule.matchType === "exact" && rule.url === request.url) ||
-        (rule.matchType === "contains" && request.url.includes(rule.url)) ||
-        (rule.matchType === "regex" && new RegExp(rule.url).test(request.url))
-    )
-
-    if (matchedRule && matchedRule.response) {
-      try {
-        console.log(`找到匹配的规则，拦截请求: ${request.url}`)
-
-        // 准备响应头
-        const responseHeaders = [
-          { name: "Content-Type", value: "application/json" },
-          { name: "Access-Control-Allow-Origin", value: "*" },
-          {
-            name: "Access-Control-Allow-Methods",
-            value: "GET, POST, PUT, DELETE, OPTIONS"
-          },
-          {
-            name: "Access-Control-Allow-Headers",
-            value: "Content-Type, Authorization"
-          },
-          {
-            name: "Cache-Control",
-            value: "no-cache, no-store, must-revalidate"
-          }
-        ]
-
-        // 记录请求信息
-        const requestInfo: RequestInfo = {
-          id: requestId,
-          url: request.url,
-          method: request.method,
-          timeStamp: Date.now(),
-          type: resourceType as ResourceType,
-          tabId: tabId,
-          frameId: 0,
-          parentFrameId: 0,
-          initiator: request.headers["Origin"] || "",
-          requestHeaders: {},
-          responseContent: matchedRule.response,
-          responseStatus: 200,
-          responseStatusText: "OK",
-          responseType: "json",
-          responseTime: 0,
-          shouldIntercept: true,
-          customResponse: matchedRule.response
-        }
-
-        // 将请求信息添加到请求数组中
-        requests.push(requestInfo)
-
-        // 使用简单的纯文本响应
-        await chrome.debugger.sendCommand({ tabId }, "Fetch.fulfillRequest", {
-          requestId,
-          responseCode: 200,
-          responseHeaders: responseHeaders,
-          body: btoa(matchedRule.response) // 简单的 Base64 编码
-        })
-
-        console.log(`成功拦截并修改响应: ${requestId}`)
-        return
-      } catch (error) {
-        console.error(`拦截响应失败: ${requestId}`, error)
-
-        // 如果拦截失败，继续请求
-        try {
-          await chrome.debugger.sendCommand(
-            { tabId },
-            "Fetch.continueRequest",
-            { requestId }
-          )
-        } catch (continueError) {
-          console.error(`继续请求失败: ${requestId}`, continueError)
-        }
-      }
-    } else {
-      // 如果没有匹配的规则，继续请求
-      try {
-        await chrome.debugger.sendCommand({ tabId }, "Fetch.continueRequest", {
-          requestId
-        })
-      } catch (err) {
-        console.error(`继续请求失败: ${requestId}`, err)
-      }
-    }
-  }
-
-  // 处理网络请求事件，用于记录请求
-  if (method === "Network.requestWillBeSent" && params) {
-    const { requestId, request, type } = params
-
-    // 检查是否已经存在该请求（可能已经被 Fetch 拦截处理过）
-    const existingRequest = requests.find(
-      (req) => req.url === request.url && req.timeStamp > Date.now() - 5000
-    )
-
-    if (!existingRequest) {
-      // 将请求信息存储到请求数组中
-      const requestInfo: RequestInfo = {
-        id: requestId,
-        url: request.url,
-        method: request.method,
-        timeStamp: Date.now(),
-        type: type.toLowerCase() as ResourceType,
-        tabId: tabId,
-        frameId: 0,
-        parentFrameId: 0,
-        initiator: params.initiator || ""
-      }
-
-      // 将请求信息添加到请求数组中
-      requests.push(requestInfo)
-      // 将请求信息存储到 Map 中，以便后续更新
-      requestMap.set(requestId, requestInfo)
-    }
-  }
-}
+// debugger 相关的功能移到了 utils/debugger.ts 中
 
 // 拦截响应头信息
 chrome.webRequest.onHeadersReceived.addListener(
@@ -504,35 +231,3 @@ chrome.webRequest.onCompleted.addListener(
   { urls: ["<all_urls>"] }
 )
 
-// 监听扩展图标点击事件，打开新窗口或聚焦到已打开的窗口
-// chrome.action.onClicked.addListener(() => {
-//   const targetUrl = chrome.runtime.getURL("tabs/index.html");
-
-//   // 查找是否已经有打开的窗口
-//   chrome.windows.getAll({ populate: true }, (windows) => {
-//     // 查找包含目标URL的窗口
-//     const existingWindow = windows.find(window =>
-//       window.tabs && window.tabs.some(tab => tab.url === targetUrl)
-//     );
-
-//     if (existingWindow && existingWindow.id) {
-//       // 如果找到已打开的窗口，则聚焦并激活该窗口
-//       chrome.windows.update(existingWindow.id, { focused: true }, () => {
-//         // 找到并激活对应的标签页
-//         if (existingWindow.tabs) {
-//           const targetTab = existingWindow.tabs.find(tab => tab.url === targetUrl);
-//           if (targetTab && targetTab.id) {
-//             chrome.tabs.update(targetTab.id, { active: true });
-//           }
-//         }
-//       });
-//     } else {
-//       // 如果没有找到已打开的窗口，则创建新窗口
-//       chrome.windows.create({
-//         url: targetUrl,
-//         type: "popup",
-//         state: "maximized"  // 设置窗口为最大化状态
-//       });
-//     }
-//   });
-// })
