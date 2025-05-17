@@ -83,7 +83,7 @@ const RequestList: React.FC<RequestListProps> = ({
         selectionMode="single"
         selection={selectedRequest}
         onSelectionChange={(e) => handleRequestClick(e.value)}
-        emptyMessage="暂无请求记录"
+        emptyMessage="No request records"
         scrollable 
         scrollHeight="flex"
         stripedRows
@@ -92,13 +92,13 @@ const RequestList: React.FC<RequestListProps> = ({
         tableStyle={{ minWidth: '50rem' }}
         rowClassName={() => 'cursor-pointer'}
       >
-        <Column field="domain" header="名称" body={domainBodyTemplate} style={{ width: '150px' }} />
-        <Column field="path" header="路径" body={pathBodyTemplate} style={{ width: '300px' }} />
-        <Column field="method" header="方法" body={methodBodyTemplate} style={{ width: '100px' }} />
-        <Column field="status" header="状态" body={statusBodyTemplate} style={{ width: '100px' }} />
-        <Column field="type" header="类型" body={typeBodyTemplate} style={{ width: '100px' }} />
-        <Column field="initiator" header="发起者" body={initiatorBodyTemplate} style={{ width: '150px' }} />
-        <Column field="time" header="时间" body={timeBodyTemplate} style={{ width: '120px' }} />
+        <Column field="domain" header="Name" body={domainBodyTemplate} style={{ width: '150px' }} />
+        <Column field="path" header="Path" body={pathBodyTemplate} style={{ width: '300px' }} />
+        <Column field="method" header="Method" body={methodBodyTemplate} style={{ width: '100px' }} />
+        <Column field="status" header="Status" body={statusBodyTemplate} style={{ width: '100px' }} />
+        <Column field="type" header="Type" body={typeBodyTemplate} style={{ width: '100px' }} />
+        <Column field="initiator" header="Initiator" body={initiatorBodyTemplate} style={{ width: '150px' }} />
+        <Column field="time" header="Time" body={timeBodyTemplate} style={{ width: '120px' }} />
       </DataTable>
     </div>
   );

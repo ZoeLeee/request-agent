@@ -6,7 +6,7 @@
   "author": "Joe Lee",
   "scripts": {
     "clean": "rimraf build",
-    "dev": "npm run clean && plasmo dev",
+    "dev": "plasmo dev",
     "build": "npm run clean && plasmo build",
     "package": "npm run clean && plasmo package"
   },

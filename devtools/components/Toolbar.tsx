@@ -30,14 +30,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
         {showRulesClear ? (
           <>
             <Button
-              label="清空规则"
+              label="Clear Rules"
               severity="danger"
               size="small"
               onClick={handleClearRules}
             />
             {onNewRule && (
               <Button
-                label="新建规则"
+                label="New Rule"
                 severity="success"
                 size="small"
                 icon="pi pi-plus"
@@ -47,7 +47,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           </>
         ) : (
           <Button
-            label="清除请求"
+            label="Clear Requests"
             severity="danger"
             size="small"
             onClick={handleClearRequests}
@@ -58,14 +58,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <input
           type="text"
           className="filter-input"
-          placeholder={showRulesClear ? "筛选规则..." : "筛选请求..."}
+          placeholder={showRulesClear ? "Filter rules..." : "Filter requests..."}
           value={filterText}
           onChange={(e) => setFilterText(e.target.value)}
         />
       </div>
       <div className="toolbar-right">
         <div className="debug-toggle">
-          <label className="debug-label">调试模式:</label>
+          <label className="debug-label">Debug Mode:</label>
           <Button
             onClick={handleDebugToggle}
             disabled={isToggling}
@@ -73,7 +73,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             {isToggling ? (
               <>
                 <span style={{ visibility: isToggling ? "hidden" : "visible" }}>
-                  {debugEnabled ? "已开启" : "已关闭"}
+                  {debugEnabled ? "Enabled" : "Disabled"}
                 </span>
                 <span
                   style={{
@@ -86,13 +86,13 @@ const Toolbar: React.FC<ToolbarProps> = ({
                     alignItems: "center",
                     justifyContent: "center"
                   }}>
-                  切换中...
+                  Switching...
                 </span>
               </>
             ) : debugEnabled ? (
-              "已开启"
+              "Enabled"
             ) : (
-              "已关闭"
+              "Disabled"
             )}
           </Button>
         </div>

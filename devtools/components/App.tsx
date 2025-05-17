@@ -9,7 +9,7 @@ import RuleList from "./RuleList";
 import RuleDetails from "./RuleDetails";
 
 const App: React.FC = () => {
-  // 使用 AppContext 获取所有状态和方法
+  // Use AppContext to get all states and methods
   const {
     requests,
     selectedRequest,
@@ -54,14 +54,14 @@ const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      {/* 垂直导航栏 */}
+      {/* Vertical Navigation Bar */}
       <VerticalNavbar 
         items={navItems}
         activeItem={activeView}
         onItemClick={handleNavItemClick}
       />
       
-      {/* 内容区域 */}
+      {/* Content Area */}
       <div className="content-area">
         <div className="content-main">
           {activeView === "network" && (
@@ -155,8 +155,8 @@ const App: React.FC = () => {
           {activeView === "home" && (
             <div className="home-view">
               <div className="welcome-container">
-                <h2>欢迎使用 Request Agent</h2>
-                <p>这是一个用于拦截和修改网络请求的工具</p>
+                <h2>Welcome to Request Agent</h2>
+                <p>This is a tool for intercepting and modifying network requests</p>
               </div>
             </div>
           )}
@@ -164,8 +164,8 @@ const App: React.FC = () => {
           {(activeView === "apis" || activeView === "files" || activeView === "sessions") && (
             <div className="coming-soon-view">
               <div className="coming-soon-container">
-                <h2>即将推出</h2>
-                <p>此功能正在开发中，敬请期待</p>
+                <h2>Coming Soon</h2>
+                <p>This feature is under development, stay tuned</p>
               </div>
             </div>
           )}

@@ -23,9 +23,9 @@ const RuleList: React.FC<RuleListProps> = ({
   // Match type template for displaying match type as tag
   const matchTypeTemplate = (rule: Rule) => {
     const matchTypeMap: Record<string, { label: string, severity: "success" | "info" | "warning" | "danger" }> = {
-      "exact": { label: "精确匹配", severity: "success" },
-      "contains": { label: "包含", severity: "info" },
-      "regex": { label: "正则表达式", severity: "warning" }
+      "exact": { label: "Exact Match", severity: "success" },
+      "contains": { label: "Contains", severity: "info" },
+      "regex": { label: "Regular Expression", severity: "warning" }
     };
     
     const { label, severity } = matchTypeMap[rule.matchType] || { label: rule.matchType, severity: "info" };
@@ -54,8 +54,8 @@ const RuleList: React.FC<RuleListProps> = ({
         <div className="text-gray-400 w-16 h-16 mb-4">
           <RulesIcon />
         </div>
-        <p className="text-xl font-medium mb-2">暂无规则</p>
-        <p className="text-gray-500">点击上方的新建规则按钮添加你的第一条规则</p>
+        <p className="text-xl font-medium mb-2">No Rules</p>
+        <p className="text-gray-500">Click the New Rule button above to add your first rule</p>
       </div>
     );
   };

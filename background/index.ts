@@ -1,20 +1,18 @@
-import { DefaultStorage } from "~utils/storage"
-import { attachDebugger, detachDebugger, setRequestsRef } from "~utils/debugger"
 import type { RequestInfo, ResourceType, Rule } from "~types"
+import {
+  attachDebugger,
+  debuggerConnections,
+  DebuugerTabIdSet,
+  detachDebugger,
+  setRequestsRef
+} from "~utils/debugger"
+import { DefaultStorage } from "~utils/storage"
 
 export let requests: RequestInfo[] = []
 const storage = DefaultStorage
 
 let rules: Rule[] = []
 let debugEnabled = false
-let inspectedTabId: number | null = null
-
-// 检查是否是当前正在调试的标签页
-function isInspectedTab(tabId: number): boolean {
-  // 严格比较，确保只有devtool面板指定的标签页被调试
-  console.log(`检查是否为调试页: tabId=${tabId}, inspectedTabId=${inspectedTabId}`)
-  return inspectedTabId !== null && inspectedTabId === tabId
-}
 
 storage.watch({
   rules: (c) => {
@@ -25,28 +23,16 @@ storage.watch({
     console.log(`调试模式已${debugEnabled ? "开启" : "关闭"}`)
 
     // 当调试模式状态变化时，更新调试器连接
-    if (debugEnabled) {
-      // 如果有已设置的检查标签页，则连接到该标签页
-      if (inspectedTabId) {
-        console.log(`开启调试模式，连接到devtool指定的标签页: inspectedTabId=${inspectedTabId}`)
-        // 仅连接到devtool面板指定的标签页
-        attachDebugger(inspectedTabId, debugEnabled)
-      } else {
-        console.log(`开启调试模式，但没有指定调试的标签页ID`)
-      }
-    } else {
+    if (!debugEnabled) {
       // 断开所有 debugger 连接
       Object.keys(debuggerConnections).forEach((tabId) => {
         detachDebugger(parseInt(tabId))
       })
-    }
-  },
-  // 记录当前正在调试的标签页 ID
-  inspectedTabId: (c) => {
-    const tabId = c.newValue
-    if (tabId && debugEnabled) {
-      // 如果调试模式已开启，则连接到该标签页
-      attachDebugger(tabId, debugEnabled)
+    } else {
+      console.log('DebuugerTabIdSet: ', DebuugerTabIdSet);
+      DebuugerTabIdSet.forEach((id) => {
+        attachDebugger(id, true)
+      })
     }
   }
 })
@@ -55,12 +41,6 @@ storage.watch({
 storage.get<boolean>("debugEnabled").then((value) => {
   debugEnabled = value || false
   console.log(`初始化调试模式: ${debugEnabled ? "开启" : "关闭"}`)
-})
-
-// 初始化当前正在调试的标签页 ID
-storage.get<number>("inspectedTabId").then((value) => {
-  inspectedTabId = value
-  console.log(`初始化调试标签页 ID: ${inspectedTabId}`)
 })
 
 // 创建一个Map来存储请求信息，以便后续更新响应信息
@@ -91,7 +71,6 @@ chrome.webRequest.onSendHeaders.addListener(
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
     if (details.type !== "xmlhttprequest") return
-    if (details.tabId !== inspectedTabId) return
 
     const requestInfo: RequestInfo = {
       id: details.requestId,
@@ -129,34 +108,20 @@ chrome.webRequest.onBeforeRequest.addListener(
   { urls: ["<all_urls>"] }
 )
 
-// 使用 Chrome Debugger API 拦截和修改网络请求
-
-// 存储当前活跃的 debugger 连接
-// 格式： { tabId: { attached: boolean, requestMap: Map<string, RequestInfo> } }
-const debuggerConnections: {
-  [tabId: number]: { attached: boolean; requestMap: Map<string, string> }
-} = {}
-
 // 监听标签页创建事件
 chrome.tabs.onCreated.addListener((tab) => {
-  // 只对当前正在调试的标签页进行连接
-  if (tab.id && debugEnabled && isInspectedTab(tab.id)) {
-    // 确保只有devtool面板指定的标签页被调试
-    console.log(`新标签页创建，并且是devtool指定的调试页: tabId=${tab.id}`)
+  // 如果调试模式开启，连接到新创建的标签页
+  if (tab.id && debugEnabled) {
+    console.log(`新标签页创建: tabId=${tab.id}`)
     attachDebugger(tab.id, debugEnabled)
   }
 })
 
 // 监听标签页更新事件
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  // 只对当前正在调试的标签页进行连接
-  if (
-    changeInfo.status === "complete" &&
-    tab.id &&
-    debugEnabled &&
-    isInspectedTab(tab.id)
-  ) {
-    console.log(`标签页更新完成，且是devtool指定的调试页: tabId=${tab.id}, inspectedTabId=${inspectedTabId}`)
+  // 只对调试模式开启的情况处理
+  if (changeInfo.status === "complete" && tab.id && debugEnabled) {
+    console.log(`标签页更新完成: tabId=${tab.id}`)
     // 等待一小段时间再连接，确保页面已完全加载
     setTimeout(() => {
       attachDebugger(tab.id, debugEnabled)
@@ -230,4 +195,3 @@ chrome.webRequest.onCompleted.addListener(
   },
   { urls: ["<all_urls>"] }
 )
-

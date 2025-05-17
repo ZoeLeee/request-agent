@@ -1,6 +1,6 @@
-import { Storage } from "@plasmohq/storage"
-import { DefaultStorage } from "./storage"
 import type { RequestInfo, ResourceType, Rule } from "~types"
+
+import { DefaultStorage } from "./storage"
 
 // 存储 debugger 连接状态的对象
 interface DebuggerConnection {
@@ -12,7 +12,7 @@ interface DebuggerConnection {
 const storage = DefaultStorage
 
 // 存储 debugger 连接状态
-const debuggerConnections: Record<number, DebuggerConnection> = {}
+export const debuggerConnections: Record<number, DebuggerConnection> = {}
 
 // 请求映射，用于跟踪请求
 const requestMap = new Map<string, RequestInfo>()
@@ -20,6 +20,8 @@ const requestMap = new Map<string, RequestInfo>()
 // 外部引用的请求数组
 let requests: RequestInfo[] = []
 let rules: Rule[] = []
+
+export const DebuugerTabIdSet = new Set<number>()
 
 // 设置外部引用的请求数组
 export function setRequestsRef(requestsRef: RequestInfo[]) {
@@ -71,9 +73,9 @@ export async function attachDebugger(tabId: number, debugEnabled: boolean) {
     // 确保在错误情况下更新存储并通知界面
     try {
       await storage.set("debugEnabled", false)
-      console.log('已关闭调试模式，由于连接失败')
+      console.log("已关闭调试模式，由于连接失败")
     } catch (storageError) {
-      console.error('无法更新存储状态:', storageError)
+      console.error("无法更新存储状态:", storageError)
     }
 
     // 使用 messaging 发送错误信息
@@ -81,7 +83,7 @@ export async function attachDebugger(tabId: number, debugEnabled: boolean) {
       name: "debugError",
       body: {
         type: "connect",
-        message: `连接 debugger 失败: ${error.message || '未知错误'}`
+        message: `连接 debugger 失败: ${error.message || "未知错误"}`
       }
     })
   }
@@ -98,13 +100,13 @@ export async function detachDebugger(tabId: number) {
       console.error(`断开 debugger 连接失败: tabId=${tabId}`, error)
       // 断开连接失败时也向 devtool 页面发送消息，结束 loading 状态
       await storage.set("debugEnabled", false)
-      
+
       // 使用 messaging 发送错误信息
       chrome.runtime.sendMessage({
         name: "debugError",
         body: {
           type: "detach",
-          message: `断开 debugger 连接失败: ${error.message || '未知错误'}`
+          message: `断开 debugger 连接失败: ${error.message || "未知错误"}`
         }
       })
     }

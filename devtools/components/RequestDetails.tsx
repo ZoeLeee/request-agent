@@ -58,7 +58,7 @@ const RequestDetails: React.FC<RequestDetailsProps> = ({
       visible={true} 
       position="right" 
       onHide={onClose}
-      header="请求详情"
+      header="Request Details"
       className="w-1/2 md:w-30rem"
       blockScroll
     >
@@ -67,13 +67,13 @@ const RequestDetails: React.FC<RequestDetailsProps> = ({
         onTabChange={handleTabChange}
         className="request-details-tabs"
       >
-        <TabPanel header="标头">
+        <TabPanel header="Headers">
           <HeadersTab selectedRequest={selectedRequest} getDomain={getDomain} />
         </TabPanel>
-        <TabPanel header="响应">
+        <TabPanel header="Response">
           <ResponseTab selectedRequest={selectedRequest} responseContent={responseContent} fetchResponseContent={fetchResponseContent} />
         </TabPanel>
-        <TabPanel header="规则编辑">
+        <TabPanel header="Rule Editor">
           <RuleTab newRule={newRule} setNewRule={setNewRule} handleRuleSave={handleRuleSave} />
         </TabPanel>
       </TabView>
@@ -106,22 +106,22 @@ const HeadersTab: React.FC<{ selectedRequest: RequestInfo; getDomain: (url: stri
               </td>
             </tr>
             <tr className="border-b">
-              <th className="p-2 bg-gray-50 text-left font-medium">状态码</th>
+              <th className="p-2 bg-gray-50 text-left font-medium">Status Code</th>
               <td className="p-2">{selectedRequest.responseStatus || "200"} {selectedRequest.responseStatusText || "OK"}</td>
             </tr>
             <tr className="border-b">
-              <th className="p-2 bg-gray-50 text-left font-medium">远程地址</th>
+              <th className="p-2 bg-gray-50 text-left font-medium">Remote Address</th>
               <td className="p-2">{getDomain(String(selectedRequest.url))}</td>
             </tr>
             <tr>
-              <th className="p-2 bg-gray-50 text-left font-medium">引用者策略</th>
+              <th className="p-2 bg-gray-50 text-left font-medium">Referrer Policy</th>
               <td className="p-2">strict-origin-when-cross-origin</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <h3 className="text-lg font-semibold mb-2">响应标头</h3>
+      <h3 className="text-lg font-semibold mb-2">Response Headers</h3>
       <div className="border rounded-md mb-4 overflow-hidden">
         <table className="w-full border-collapse">
           <tbody>
@@ -142,7 +142,7 @@ const HeadersTab: React.FC<{ selectedRequest: RequestInfo; getDomain: (url: stri
         </table>
       </div>
 
-      <h3>请求标头</h3>
+      <h3>Request Headers</h3>
       <table>
         <tbody>
           {selectedRequest.requestHeaders ? (
@@ -168,7 +168,7 @@ const HeadersTab: React.FC<{ selectedRequest: RequestInfo; getDomain: (url: stri
   );
 };
 
-// 响应标签页组件
+// Response tab component
 const ResponseTab: React.FC<{ 
   selectedRequest: RequestInfo; 
   responseContent: string; 
@@ -202,7 +202,7 @@ const ResponseTab: React.FC<{
             </tr>
             {selectedRequest.responseTime && (
               <tr>
-                <th className="p-2 bg-gray-50 text-left font-medium">响应时间</th>
+                <th className="p-2 bg-gray-50 text-left font-medium">Response Time</th>
                 <td className="p-2">
                   {typeof selectedRequest.responseTime === "number"
                     ? selectedRequest.responseTime.toFixed(2)
@@ -214,7 +214,7 @@ const ResponseTab: React.FC<{
         </table>
       </div>
 
-      <h3 className="text-lg font-semibold mb-2">响应头</h3>
+      <h3 className="text-lg font-semibold mb-2">Response Headers</h3>
       <div className="border rounded-md mb-4 overflow-hidden">
         <table className="w-full border-collapse">
           <tbody>
@@ -235,7 +235,7 @@ const ResponseTab: React.FC<{
         </table>
       </div>
 
-      <h3 className="text-lg font-semibold mb-2">响应内容</h3>
+      <h3 className="text-lg font-semibold mb-2">Response Content</h3>
       {selectedRequest.responseContent ? (
         <pre className="bg-gray-50 p-3 rounded-md overflow-auto max-h-60 text-sm">
           {typeof selectedRequest.responseContent === "string"
@@ -250,11 +250,11 @@ const ResponseTab: React.FC<{
             <div className="text-center py-4">
               <p className="mb-3 text-gray-600">
                 {selectedRequest.responseType === "image"
-                  ? "图片内容无法直接显示"
-                  : "由于浏览器安全限制，无法直接获取响应体内容。"}
+                  ? "Image content cannot be displayed directly"
+                  : "Due to browser security restrictions, response body content cannot be accessed directly."}
               </p>
               <Button
-                label="尝试获取内容"
+                label="Try to get content"
                 onClick={() => fetchResponseContent(selectedRequest.url)}
                 className="p-button-outlined"
               />
@@ -280,18 +280,18 @@ const RuleTab: React.FC<{
 }) => {
   // Match type options for dropdown
   const matchTypeOptions = [
-    { label: '精确匹配', value: 'exact' },
-    { label: '包含', value: 'contains' },
-    { label: '正则表达式', value: 'regex' }
+    { label: 'Exact Match', value: 'exact' },
+    { label: 'Contains', value: 'contains' },
+    { label: 'Regular Expression', value: 'regex' }
   ];
 
   return (
     <div className="p-2">
-      <h3 className="text-lg font-semibold mb-3">编辑拦截规则</h3>
+      <h3 className="text-lg font-semibold mb-3">Edit Interception Rule</h3>
       
       <div className="field mb-4">
         <label htmlFor="rule-url" className="block text-sm font-medium mb-2">
-          URL 模式:
+          URL Pattern:
         </label>
         <InputText
           id="rule-url"
@@ -303,7 +303,7 @@ const RuleTab: React.FC<{
       
       <div className="field mb-4">
         <label htmlFor="match-type" className="block text-sm font-medium mb-2">
-          匹配类型:
+          Match Type:
         </label>
         <Dropdown
           id="match-type"
@@ -316,7 +316,7 @@ const RuleTab: React.FC<{
       
       <div className="field mb-4">
         <label htmlFor="response-content" className="block text-sm font-medium mb-2">
-          自定义响应 (JSON):
+          Custom Response (JSON):
         </label>
         <InputTextarea
           id="response-content"
@@ -330,7 +330,7 @@ const RuleTab: React.FC<{
       
       <div className="flex justify-end">
         <Button
-          label="保存规则"
+          label="Save Rule"
           icon="pi pi-save"
           className="p-button-success"
           onClick={handleRuleSave}

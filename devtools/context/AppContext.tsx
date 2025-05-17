@@ -11,6 +11,9 @@ import React, {
 import { sendToBackground } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
+import type { RequestInfo, Rule } from "~types"
+import { DefaultStorage } from "~utils/storage"
+
 import {
   ApiIcon,
   FilesIcon,
@@ -19,12 +22,10 @@ import {
   RulesIcon,
   SessionsIcon
 } from "../components/icons"
-import type { RequestInfo, Rule } from "~types"
-import { DefaultStorage } from "~utils/storage"
 
 const storage = DefaultStorage
 
-// 定义Context的类型
+// Define Context type
 interface AppContextType {
   // 状态
   requests: RequestInfo[]
@@ -52,7 +53,7 @@ interface AppContextType {
   }>
   toast: React.RefObject<any> // Toast组件引用
 
-  // 方法
+  // Methods
   setRequests: React.Dispatch<React.SetStateAction<RequestInfo[]>>
   setSelectedRequest: React.Dispatch<React.SetStateAction<RequestInfo | null>>
   setRules: React.Dispatch<React.SetStateAction<Rule[]>>
@@ -86,14 +87,14 @@ interface AppContextType {
   handleNavItemClick: (id: string) => void
 }
 
-// 创建Context
+// Create Context
 export const AppContext = createContext<AppContextType | undefined>(undefined)
 
-// 创建Provider组件
+// Create Provider component
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children
 }) => {
-  // 状态管理
+  // State management
   const [requests, setRequests] = useState<RequestInfo[]>([])
   const [selectedRequest, setSelectedRequest] = useState<RequestInfo | null>(
     null
@@ -106,7 +107,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     matchType: "exact",
     response: ""
   })
-  // Toast组件引用
+  // Toast component reference
   const toast = useRef<any>(null)
   const [filterText, setFilterText] = useState<string>("")
   const [ruleFilterText, setRuleFilterText] = useState<string>("")
@@ -119,16 +120,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [ruleDetailsWidth, setRuleDetailsWidth] = useState<number>(400)
   const [showSidebar, setShowSidebar] = useState<boolean>(true)
 
-  // 初始化数据
+  // Initialize data
   useEffect(() => {
     const initializeData = async () => {
       try {
-        // 获取当前标签页的请求
+        // Get requests for current tab
         const response = await sendToBackground({
-          name: "getRequests"
+          name: "getRequests",
+          body: {
+            currentTabId: chrome.devtools?.inspectedWindow?.tabId || 0
+          }
         })
         console.log("response: ", response)
-        // 确保response是一个数组才设置请求列表
+        // Only set request list if response is an array
         if (
           response !== undefined &&
           response !== null &&
@@ -136,117 +140,116 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         ) {
           setRequests(response)
         } else {
-          // 如果后台没有返回有效数据，则设置为空数组
+          // If backend doesn't return valid data, set to empty array
           setRequests([])
         }
 
-        // 获取存储的规则
+        // Get stored rules
         await refreshRules()
 
-        // 获取调试状态
+        // Get debug status
         const debugValue = await storage.get<boolean>("debugEnabled")
         setDebugEnabled(debugValue || false)
-
-        // 将当前标签页 ID 保存到存储中，使当前标签页成为调试目标
-        if (chrome.devtools?.inspectedWindow?.tabId) {
-          const currentTabId = chrome.devtools.inspectedWindow.tabId
-          console.log(`当前标签页 ID: ${currentTabId}`)
-          await storage.set("inspectedTabId", currentTabId)
-        }
       } catch (error) {
-        console.error("初始化数据失败:", error)
+        console.error("Failed to initialize data:", error)
       }
     }
 
     initializeData()
 
-    // 监听 debugError 消息
+    // Listen for debugError message
     const handleDebugError = (message) => {
       if (message.name === "debugError" && message.body) {
         const { type, message: errorMessage } = message.body
-        // 使用 Toast 显示错误信息
+        // Use Toast to display error message
         toast.current?.show({
           severity: "error",
-          summary: type === "connect" ? "连接失败" : "断开连接失败",
+          summary: "Error",
           detail: errorMessage,
           life: 5000
         })
 
-        // 更新调试状态
+        // Update debug status
         setDebugEnabled(false)
         setIsToggling(false)
       }
     }
 
-    // 添加消息监听器
+    // Add message listener
     chrome.runtime.onMessage.addListener(handleDebugError)
 
-    // 当切换到响应标签时，尝试获取响应内容
+    // When switching to response tab, try to get response content
     if (activeTab === "response" && selectedRequest) {
       fetchResponseContent(selectedRequest.url)
     }
 
-    // 当 DevTools 面板关闭时自动关闭调试功能
+    // Automatically turn off debugging when DevTools panel is closed
     const handleBeforeUnload = () => {
-      console.log("开发者工具面板关闭，自动关闭调试功能")
+      console.log("DevTools panel closed, automatically turning off debug mode")
       storage.set("debugEnabled", false)
     }
 
     window.addEventListener("beforeunload", handleBeforeUnload)
 
-    // 定时刷新请求列表
+    // Refresh request list periodically
     const interval = setInterval(() => {
       sendToBackground({
-        name: "getRequests"
+        name: "getRequests",
+        body: {
+          currentTabId: chrome.devtools?.inspectedWindow?.tabId || 0
+        }
       }).then((response: any) => {
         if (response) {
           setRequests(response)
         }
       })
-    }, 5000)
+    }, 3000)
 
-    // 清理函数
+    // Cleanup function
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload)
-      // 移除消息监听器
+      // Remove message listener
       chrome.runtime.onMessage.removeListener(handleDebugError)
       clearInterval(interval)
     }
   }, [activeTab, selectedRequest])
-  
-  // 只在组件真正卸载时关闭调试功能的Effect
+
+  // Effect to close debug mode only when component is actually unmounted
   useEffect(() => {
     return () => {
-      // 组件真正卸载时关闭调试功能
-      console.log("组件卸载，关闭调试功能")
+      // Turn off debugging when component is actually unmounted
+      console.log("Component unmounted, turning off debugging")
       storage.set("debugEnabled", false)
     }
   }, [])
 
-  // 处理清除请求
+  // Handle clear requests
   const handleClearRequests = () => {
     sendToBackground({
-      name: "clearRequests"
+      name: "clearRequests",
+      body: {
+        currentTabId: chrome.devtools?.inspectedWindow?.tabId || 0
+      }
     }).then(() => {
       setRequests([])
       setSelectedRequest(null)
     })
   }
 
-  // 处理清空规则
+  // Handle clear rules
   const handleClearRules = async () => {
     await storage.set("rules", [])
     setRules([])
     setSelectedRule(null)
-    console.log("已清空所有规则")
+    console.log("All rules cleared")
   }
 
-  // 处理请求点击
+  // Handle request click
   const handleRequestClick = (request: RequestInfo) => {
     setSelectedRequest(request)
     setActiveTab("headers")
 
-    // 当选择请求时，预填充规则表单
+    // When selecting a request, prefill rule form
     setNewRule({
       id: Date.now().toString(),
       url: request.url,
@@ -255,12 +258,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     })
   }
 
-  // 处理详情面板关闭
+  // Handle details panel close
   const handleDetailsClose = () => {
     setSelectedRequest(null)
   }
 
-  // 从存储中获取最新的规则
+  // Get the latest rules from storage
   const refreshRules = async () => {
     try {
       const savedRules = await storage.get<Rule[]>("rules")
@@ -274,37 +277,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
-  // 处理规则保存
+  // Handle rule save
   const handleRuleSave = async () => {
     try {
-      // 验证规则
+      // Validate rule
       if (!newRule.url.trim()) {
-        alert("URL不能为空")
+        alert("URL cannot be empty")
         return
       }
 
       let updatedRules: Rule[] = []
-      // 查找具有相同URL和匹配方式的现有规则
+      // Find existing rule with same URL and match type
       const existingRuleIndex = rules.findIndex(
-        (rule) => rule.url === newRule.url && rule.matchType === newRule.matchType
+        (rule) =>
+          rule.url === newRule.url && rule.matchType === newRule.matchType
       )
 
       if (selectedRule) {
-        // 更新现有规则
+        // Clear selected rule
         updatedRules = rules.map((rule) =>
           rule.id === selectedRule.id
             ? { ...newRule, id: selectedRule.id }
             : rule
         )
       } else if (existingRuleIndex !== -1) {
-        // 如果找到具有相同URL和匹配方式的规则，更新该规则
+        // If found rule with same URL and match type, update it
         updatedRules = rules.map((rule, index) =>
-          index === existingRuleIndex
-            ? { ...newRule, id: rule.id }
-            : rule
+          index === existingRuleIndex ? { ...newRule, id: rule.id } : rule
         )
       } else {
-        // 添加新规则
+        // Add new rule
         const newRuleWithId = {
           ...newRule,
           id: Date.now().toString()
@@ -312,7 +314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         updatedRules = [...rules, newRuleWithId]
       }
 
-      // 保存到存储
+      // Save to storage
       await storage.set("rules", updatedRules)
 
       // 更新状态
@@ -320,43 +322,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       setSelectedRule(null)
       setActiveTab("")
 
-      console.log("规则已保存:", newRule)
+      console.log("Rule saved:", newRule)
     } catch (error) {
-      console.error("保存规则失败:", error)
+      console.error("Failed to save rule:", error)
     }
   }
 
-  // 处理调试开关状态变化
+  // Handle debug toggle state change
   const handleDebugToggle = async () => {
     try {
       setIsToggling(true)
 
       const newDebugState = !debugEnabled
-      console.log(`切换调试模式: ${newDebugState ? "开启" : "关闭"}`)
+      console.log(`Toggle debug mode: ${newDebugState ? "On" : "Off"}`)
 
-      // 更新存储中的调试状态
-      await storage.set("debugEnabled", newDebugState)
-
-      // 通知后台脚本调试状态已更改
+      // Notify background script that debug state has changed
       await sendToBackground({
         name: "setDebugEnabled",
         body: {
-          enabled: newDebugState
+          targetId: chrome.devtools.inspectedWindow.tabId,
+          state: newDebugState
         }
       } as any)
+
+      // Update debug state in storage
+      await storage.set("debugEnabled", newDebugState)
 
       // 更新状态
       setDebugEnabled(newDebugState)
       setIsToggling(false)
 
-      console.log(`调试模式已${newDebugState ? "开启" : "关闭"}`)
+      console.log(`Debug mode is now ${newDebugState ? "enabled" : "disabled"}`)
     } catch (error) {
-      console.error("切换调试模式失败:", error)
+      console.error("Failed to toggle debug mode:", error)
       setIsToggling(false)
     }
   }
 
-  // 获取请求的域名
+  // Get the domain of the request
   const getDomain = (url: string) => {
     try {
       const urlObj = new URL(url)
@@ -366,7 +369,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
-  // 获取请求的路径
+  // Get the path of the request
   const getPath = (url: string) => {
     try {
       const urlObj = new URL(url)
@@ -376,20 +379,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }
 
-  // 获取响应内容
+  // Get response content
   const fetchResponseContent = async (url: string) => {
     try {
-      setResponseContent("正在获取响应内容...")
+      setResponseContent("Getting response content...")
 
-      // 检查是否有自定义响应
+      // Check if there is a custom response
       if (
         selectedRequest &&
         selectedRequest.shouldIntercept &&
         selectedRequest.customResponse
       ) {
-        console.log("使用自定义响应:", selectedRequest.customResponse)
+        console.log("Using custom response:", selectedRequest.customResponse)
 
-        // 尝试解析为 JSON
+        // Try to parse as JSON
         try {
           const jsonData = JSON.parse(selectedRequest.customResponse)
           const jsonString = JSON.stringify(jsonData, null, 2)
@@ -406,7 +409,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
           return // 使用自定义响应后直接返回
         } catch (e) {
-          // 如果不是 JSON，则直接使用文本
+          // If not JSON, use text directly
           setResponseContent(selectedRequest.customResponse)
 
           // 更新请求信息
@@ -422,14 +425,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
 
-      // 准备请求头
+      // Prepare request headers
       let headers: { [key: string]: string } = {
         "X-Requested-With": "XMLHttpRequest"
       }
 
-      // 如果有原始请求头，将其合并到请求中
+      // If there are original request headers, merge them into the request
       if (selectedRequest && selectedRequest.requestHeaders) {
-        // 复制原始请求头，但过滤一些不应该复制的头
+        // Copy original request headers, but filter out some that shouldn't be copied
         const skipHeaders = [
           "host",
           "connection",
@@ -450,22 +453,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         )
 
-        console.log("使用原始请求头:", headers)
+        console.log("Using original request headers:", headers)
       }
 
-      // 尝试发送请求获取内容
+      // Try to send request to get content
       const response = await fetch(url, {
         method: selectedRequest?.method || "GET",
         headers: headers,
-        // 如果需要发送凭证，比如 cookies
+        // If credentials need to be sent, such as cookies
         credentials: "include"
       }).catch((error) => {
-        console.error("请求失败:", error)
-        throw new Error(`请求失败: ${error.message}`)
+        console.error("Request failed:", error)
+        throw new Error(`Request failed: ${error.message}`)
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP 错误! 状态: ${response.status}`)
+        throw new Error(`HTTP error! Status: ${response.status}`)
       }
 
       // 尝试解析为 JSON
@@ -480,7 +483,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           selectedRequest.responseType = "json"
         }
       } catch (e) {
-        // 如果不是 JSON，则获取文本内容
+        // If not JSON, get text content
         const textData = await response.text()
         setResponseContent(textData)
 
@@ -491,14 +494,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
     } catch (error) {
-      console.error("获取响应内容失败:", error)
+      console.error("Failed to get response content:", error)
       setResponseContent(
-        `获取响应内容失败: ${error.message}\n\n请注意：由于浏览器的安全策略，直接获取跨域资源可能会失败。\n这是正常的安全限制，防止未经授权的跨站请求。`
+        `Failed to get response content: ${error.message}\n\nNote: Due to browser security policies, directly accessing cross-origin resources may fail.\nThis is a normal security restriction to prevent unauthorized cross-site requests.`
       )
     }
   }
 
-  // 处理请求详情面板的调整大小
+  // Handle request details panel resize
   const handleResizerMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     const startY = e.clientY
@@ -519,7 +522,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     document.addEventListener("mouseup", handleMouseUp)
   }
 
-  // 处理规则详情面板的调整大小
+  // Handle rule details panel resize
   const handleRuleResizerMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     const startX = e.clientX
@@ -540,39 +543,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     document.addEventListener("mouseup", handleMouseUp)
   }
 
-  // 切换侧边栏显示状态
+  // Toggle sidebar display state
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar)
   }
 
-  // 定义导航项
+  // Define navigation items
   const navItems = [
-    // { id: "home", icon: <HomeIcon />, label: "首页" },
-    { id: "network", icon: <NetworkIcon />, label: "网络" },
-    { id: "rules", icon: <RulesIcon />, label: "规则" }
+    // { id: "home", icon: <HomeIcon />, label: "Home" },
+    { id: "network", icon: <NetworkIcon />, label: "Network" },
+    { id: "rules", icon: <RulesIcon />, label: "Rules" }
     // { id: "apis", icon: <ApiIcon />, label: "APIs", beta: true },
-    // { id: "files", icon: <FilesIcon />, label: "文件" },
-    // { id: "sessions", icon: <SessionsIcon />, label: "会话" }
+    // { id: "files", icon: <FilesIcon />, label: "Files" },
+    // { id: "sessions", icon: <SessionsIcon />, label: "Sessions" }
   ]
 
-  // 处理导航项点击
+  // Handle navigation item click
   const handleNavItemClick = (id: string) => {
     setActiveView(id)
 
-    // 当切换到规则标签页时，刷新规则列表
+    // Refresh rule list when switching to rules tab
     if (id === "rules") {
       refreshRules()
     }
   }
 
-  // 过滤请求
+  // Filter requests
   const filteredRequests = useMemo(() => {
     return requests.filter((request) => {
       return request.url.toLowerCase().includes(filterText.toLowerCase())
     })
   }, [requests, filterText])
 
-  // 过滤规则
+  // Filter rules
   const filteredRules = useMemo(() => {
     if (!ruleFilterText) return rules
     return rules.filter((rule) => {
@@ -580,9 +583,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     })
   }, [rules, ruleFilterText])
 
-  // 提供Context值
+  // Provide Context value
   const contextValue: AppContextType = {
-    // 状态
+    // States
     requests,
     selectedRequest,
     rules,
@@ -603,7 +606,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     navItems,
     toast,
 
-    // 状态设置方法
+    // State setter methods
     setRequests,
     setSelectedRequest,
     setRules,
@@ -620,7 +623,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setRuleDetailsWidth,
     setShowSidebar,
 
-    // 业务逻辑方法
+    // Business logic methods
     handleClearRequests,
     handleClearRules,
     handleRequestClick,
@@ -645,7 +648,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   )
 }
 
-// 创建自定义Hook，方便在组件中使用Context
+// Create custom Hook for easy use of Context in components
 export const useAppContext = () => {
   const context = useContext(AppContext)
   if (context === undefined) {
