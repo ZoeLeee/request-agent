@@ -29,11 +29,17 @@ export function setRequestsRef(requestsRef: RequestInfo[]) {
 }
 
 // 连接到 debugger
-export async function attachDebugger(tabId: number, debugEnabled: boolean) {
+export async function attachDebugger(
+  tabId: number,
+  debugEnabled: boolean,
+  callback?: () => void
+) {
   if (!tabId || !debugEnabled) {
+    callback?.()
     return
   }
   if (debuggerConnections[tabId] && debuggerConnections[tabId].attached) {
+    callback?.()
     return
   }
 
@@ -86,30 +92,37 @@ export async function attachDebugger(tabId: number, debugEnabled: boolean) {
         message: `连接 debugger 失败: ${error.message || "未知错误"}`
       }
     })
+  } finally {
+    callback?.()
   }
 }
 
 // 断开与 debugger 的连接
-export async function detachDebugger(tabId: number) {
-  if (debuggerConnections[tabId] && debuggerConnections[tabId].attached) {
-    try {
-      await chrome.debugger.detach({ tabId })
-      console.log(`断开与 debugger 的连接: tabId=${tabId}`)
-      delete debuggerConnections[tabId]
-    } catch (error) {
-      console.error(`断开 debugger 连接失败: tabId=${tabId}`, error)
-      // 断开连接失败时也向 devtool 页面发送消息，结束 loading 状态
-      await storage.set("debugEnabled", false)
+export async function detachDebugger(tabId: number, callback?: () => void) {
+  try {
+    if (debuggerConnections[tabId] && debuggerConnections[tabId].attached) {
+      try {
+        await chrome.debugger.detach({ tabId })
+        console.log(`断开与 debugger 的连接: tabId=${tabId}`)
+        delete debuggerConnections[tabId]
+        DebuugerTabIdSet.delete(tabId)
+      } catch (error) {
+        console.error(`断开 debugger 连接失败: tabId=${tabId}`, error)
+        // 断开连接失败时也向 devtool 页面发送消息，结束 loading 状态
+        await storage.set("debugEnabled", false)
 
-      // 使用 messaging 发送错误信息
-      chrome.runtime.sendMessage({
-        name: "debugError",
-        body: {
-          type: "detach",
-          message: `断开 debugger 连接失败: ${error.message || "未知错误"}`
-        }
-      })
+        // 使用 messaging 发送错误信息
+        chrome.runtime.sendMessage({
+          name: "debugError",
+          body: {
+            type: "detach",
+            message: `断开 debugger 连接失败: ${error.message || "未知错误"}`
+          }
+        })
+      }
     }
+  } finally {
+    callback?.()
   }
 }
 

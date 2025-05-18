@@ -26,13 +26,29 @@ storage.watch({
     if (!debugEnabled) {
       // 断开所有 debugger 连接
       Object.keys(debuggerConnections).forEach((tabId) => {
-        detachDebugger(parseInt(tabId))
+        detachDebugger(parseInt(tabId), () => {
+          chrome.runtime.sendMessage({
+            name: "debugEnabled",
+            body: {
+              state: false
+            }
+          })
+        })
       })
     } else {
-      console.log('DebuugerTabIdSet: ', DebuugerTabIdSet);
-      DebuugerTabIdSet.forEach((id) => {
-        attachDebugger(id, true)
-      })
+      if (DebuugerTabIdSet.size > 0) {
+        DebuugerTabIdSet.forEach((id) => {
+          attachDebugger(id, true, () => {
+            // 通知前端调试模式已开启
+            chrome.runtime.sendMessage({
+              name: "debugEnabled",
+              body: {
+                state: true
+              }
+            })
+          })
+        })
+      }
     }
   }
 })

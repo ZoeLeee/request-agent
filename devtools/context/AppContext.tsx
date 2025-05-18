@@ -173,6 +173,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setDebugEnabled(false)
         setIsToggling(false)
       }
+
+      if(message.name === "debugEnabled") {
+        const { state } = message.body
+        setDebugEnabled(state)
+        setIsToggling(false)
+      }
     }
 
     // Add message listener
@@ -338,7 +344,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Notify background script that debug state has changed
       await sendToBackground({
-        name: "setDebugEnabled",
+        name: "toggleDebugger",
         body: {
           targetId: chrome.devtools.inspectedWindow.tabId,
           state: newDebugState
@@ -349,10 +355,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       await storage.set("debugEnabled", newDebugState)
 
       // 更新状态
-      setDebugEnabled(newDebugState)
-      setIsToggling(false)
+      // setDebugEnabled(newDebugState)
+      // setIsToggling(false)
 
-      console.log(`Debug mode is now ${newDebugState ? "enabled" : "disabled"}`)
+      // console.log(`Debug mode is now ${newDebugState ? "enabled" : "disabled"}`)
     } catch (error) {
       console.error("Failed to toggle debug mode:", error)
       setIsToggling(false)

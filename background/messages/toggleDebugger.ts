@@ -10,11 +10,10 @@ const toggleDebuggerHandler: PlasmoMessaging.MessageHandler<{
 }> = async (req, res) => {
   const { state, targetId } = req.body
 
-  console.log('targetId: ', targetId);
   if (state) {
-    DebuugerTabIdSet.delete(targetId)
-  } else {
     DebuugerTabIdSet.add(targetId)
+  } else {
+    DebuugerTabIdSet.delete(targetId)
   }
 
   res.send({
