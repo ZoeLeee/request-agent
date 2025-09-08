@@ -1,8 +1,8 @@
 {
   "name": "request-agent",
-  "displayName": "Request agent",
-  "version": "0.0.1",
-  "description": "Intercepts and modifies specific network requests",
+  "displayName": "RequestMan",
+  "version": "0.0.2",
+  "description": "基于自定义规则拦截请求并返回自定义响应 | Intercept requests with user-defined rules and return custom responses",
   "author": "Joe Lee",
   "scripts": {
     "clean": "rimraf build",
