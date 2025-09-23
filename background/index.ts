@@ -25,16 +25,28 @@ storage.watch({
     // 当调试模式状态变化时，更新调试器连接
     if (!debugEnabled) {
       // 断开所有 debugger 连接
-      Object.keys(debuggerConnections).forEach((tabId) => {
-        detachDebugger(parseInt(tabId), () => {
-          chrome.runtime.sendMessage({
-            name: "debugEnabled",
-            body: {
-              state: false
-            }
+      const tabIds = Object.keys(debuggerConnections)
+      if (tabIds.length === 0) {
+        // 无连接时也要通知前端，结束 loading
+        chrome.runtime.sendMessage({
+          name: "debugEnabled",
+          body: {
+            state: false
+          }
+        })
+      } else {
+        tabIds.forEach((tabId) => {
+          detachDebugger(parseInt(tabId), () => {
+            // 分别通知前端
+            chrome.runtime.sendMessage({
+              name: "debugEnabled",
+              body: {
+                state: false
+              }
+            })
           })
         })
-      })
+      }
     } else {
       if (DebuugerTabIdSet.size > 0) {
         DebuugerTabIdSet.forEach((id) => {
@@ -47,6 +59,14 @@ storage.watch({
               }
             })
           })
+        })
+      } else {
+        // 没有目标标签页也需要通知前端，结束 loading
+        chrome.runtime.sendMessage({
+          name: "debugEnabled",
+          body: {
+            state: true
+          }
         })
       }
     }

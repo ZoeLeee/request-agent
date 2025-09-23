@@ -69,11 +69,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
           <Button
             onClick={handleDebugToggle}
             disabled={isToggling}
-            severity={debugEnabled ? "success" : "danger"}>
+            severity={debugEnabled ? "danger" : "success"}>
             {isToggling ? (
               <>
                 <span style={{ visibility: isToggling ? "hidden" : "visible" }}>
-                  {debugEnabled ? "Enabled" : "Disabled"}
+                  {debugEnabled ? "Disable" : "Enable"}
                 </span>
                 <span
                   style={{
@@ -90,9 +90,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 </span>
               </>
             ) : debugEnabled ? (
-              "Enabled"
+              "Disable"
             ) : (
-              "Disabled"
+              "Enable"
             )}
           </Button>
         </div>

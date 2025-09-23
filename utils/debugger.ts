@@ -122,6 +122,8 @@ export async function detachDebugger(tabId: number, callback?: () => void) {
       }
     }
   } finally {
+    delete debuggerConnections[tabId]
+    DebuugerTabIdSet.delete(tabId)
     callback?.()
   }
 }

@@ -367,7 +367,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       // setDebugEnabled(newDebugState)
       // setIsToggling(false)
 
-      // console.log(`Debug mode is now ${newDebugState ? "enabled" : "disabled"}`)
+      console.log(`Debug mode is now ${newDebugState ? "enabled" : "disabled"}`)
     } catch (error) {
       console.error("Failed to toggle debug mode:", error)
       setIsToggling(false)
