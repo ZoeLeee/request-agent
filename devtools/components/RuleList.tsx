@@ -23,9 +23,9 @@ const RuleList: React.FC<RuleListProps> = ({
   // Match type template for displaying match type as tag
   const matchTypeTemplate = (rule: Rule) => {
     const matchTypeMap: Record<string, { label: string, severity: "success" | "info" | "warning" | "danger" }> = {
-      "exact": { label: "Exact Match", severity: "success" },
-      "contains": { label: "Contains", severity: "info" },
-      "regex": { label: "Regular Expression", severity: "warning" }
+      "exact": { label: chrome.i18n.getMessage("match_exact"), severity: "success" },
+      "contains": { label: chrome.i18n.getMessage("match_contains"), severity: "info" },
+      "regex": { label: chrome.i18n.getMessage("match_regex"), severity: "warning" }
     };
     
     const { label, severity } = matchTypeMap[rule.matchType] || { label: rule.matchType, severity: "info" };
@@ -54,8 +54,8 @@ const RuleList: React.FC<RuleListProps> = ({
         <div className="text-gray-400 w-16 h-16 mb-4">
           <RulesIcon />
         </div>
-        <p className="text-xl font-medium mb-2">No Rules</p>
-        <p className="text-gray-500">Click the New Rule button above to add your first rule</p>
+        <p className="text-xl font-medium mb-2">{chrome.i18n.getMessage("no_rules")}</p>
+        <p className="text-gray-500">{chrome.i18n.getMessage("no_rules_hint")}</p>
       </div>
     );
   };
@@ -75,9 +75,9 @@ const RuleList: React.FC<RuleListProps> = ({
         dataKey="id"
         rowClassName={() => 'cursor-pointer'}
       >
-        <Column field="url" header="URL" body={urlTemplate} style={{ minWidth: '250px' }} />
-        <Column field="matchType" header="匹配类型" body={matchTypeTemplate} style={{ width: '120px' }} />
-        <Column field="response" header="响应预览" body={responsePreviewTemplate} style={{ minWidth: '200px' }} />
+        <Column field="url" header={chrome.i18n.getMessage("col_url")} body={urlTemplate} style={{ minWidth: '250px' }} />
+        <Column field="matchType" header={chrome.i18n.getMessage("col_match_type")} body={matchTypeTemplate} style={{ width: '120px' }} />
+        <Column field="response" header={chrome.i18n.getMessage("col_response_preview")} body={responsePreviewTemplate} style={{ minWidth: '200px' }} />
       </DataTable>
     </div>
   );

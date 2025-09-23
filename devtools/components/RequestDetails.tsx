@@ -58,7 +58,7 @@ const RequestDetails: React.FC<RequestDetailsProps> = ({
       visible={true} 
       position="right" 
       onHide={onClose}
-      header="Request Details"
+      header={chrome.i18n.getMessage("req_details")}
       className="w-1/2 md:w-30rem"
       blockScroll
     >
@@ -67,13 +67,13 @@ const RequestDetails: React.FC<RequestDetailsProps> = ({
         onTabChange={handleTabChange}
         className="request-details-tabs"
       >
-        <TabPanel header="Headers">
+        <TabPanel header={chrome.i18n.getMessage("tab_headers")}>
           <HeadersTab selectedRequest={selectedRequest} getDomain={getDomain} />
         </TabPanel>
-        <TabPanel header="Response">
+        <TabPanel header={chrome.i18n.getMessage("tab_response")}>
           <ResponseTab selectedRequest={selectedRequest} responseContent={responseContent} fetchResponseContent={fetchResponseContent} />
         </TabPanel>
-        <TabPanel header="Rule Editor">
+        <TabPanel header={chrome.i18n.getMessage("tab_rule")}>
           <RuleTab newRule={newRule} setNewRule={setNewRule} handleRuleSave={handleRuleSave} />
         </TabPanel>
       </TabView>
@@ -85,12 +85,12 @@ const RequestDetails: React.FC<RequestDetailsProps> = ({
 const HeadersTab: React.FC<{ selectedRequest: RequestInfo; getDomain: (url: string) => string }> = ({ selectedRequest, getDomain }) => {
   return (
     <div className="p-2">
-      <h3 className="text-lg font-semibold mb-2">常规</h3>
+      <h3 className="text-lg font-semibold mb-2">{chrome.i18n.getMessage("general")}</h3>
       <div className="border rounded-md mb-4 overflow-hidden">
         <table className="w-full border-collapse">
           <tbody>
             <tr className="border-b">
-              <th className="p-2 bg-gray-50 text-left font-medium w-1/3">请求 URL</th>
+              <th className="p-2 bg-gray-50 text-left font-medium w-1/3">{chrome.i18n.getMessage("request_url")}</th>
               <td className="p-2 break-all">
                 {typeof selectedRequest.url === "string"
                   ? selectedRequest.url
@@ -98,7 +98,7 @@ const HeadersTab: React.FC<{ selectedRequest: RequestInfo; getDomain: (url: stri
               </td>
             </tr>
             <tr className="border-b">
-              <th className="p-2 bg-gray-50 text-left font-medium">请求方法</th>
+              <th className="p-2 bg-gray-50 text-left font-medium">{chrome.i18n.getMessage("request_method")}</th>
               <td className="p-2">
                 {typeof selectedRequest.method === "string"
                   ? selectedRequest.method
@@ -106,22 +106,22 @@ const HeadersTab: React.FC<{ selectedRequest: RequestInfo; getDomain: (url: stri
               </td>
             </tr>
             <tr className="border-b">
-              <th className="p-2 bg-gray-50 text-left font-medium">Status Code</th>
+              <th className="p-2 bg-gray-50 text-left font-medium">{chrome.i18n.getMessage("status_code")}</th>
               <td className="p-2">{selectedRequest.responseStatus || "200"} {selectedRequest.responseStatusText || "OK"}</td>
             </tr>
             <tr className="border-b">
-              <th className="p-2 bg-gray-50 text-left font-medium">Remote Address</th>
+              <th className="p-2 bg-gray-50 text-left font-medium">{chrome.i18n.getMessage("remote_address")}</th>
               <td className="p-2">{getDomain(String(selectedRequest.url))}</td>
             </tr>
             <tr>
-              <th className="p-2 bg-gray-50 text-left font-medium">Referrer Policy</th>
+              <th className="p-2 bg-gray-50 text-left font-medium">{chrome.i18n.getMessage("referrer_policy")}</th>
               <td className="p-2">strict-origin-when-cross-origin</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <h3 className="text-lg font-semibold mb-2">Response Headers</h3>
+      <h3 className="text-lg font-semibold mb-2">{chrome.i18n.getMessage("response_headers")}</h3>
       <div className="border rounded-md mb-4 overflow-hidden">
         <table className="w-full border-collapse">
           <tbody>
@@ -180,12 +180,12 @@ const ResponseTab: React.FC<{
 }) => {
   return (
     <div className="p-2">
-      <h3 className="text-lg font-semibold mb-2">常规</h3>
+      <h3 className="text-lg font-semibold mb-2">{chrome.i18n.getMessage("general")}</h3>
       <div className="border rounded-md mb-4 overflow-hidden">
         <table className="w-full border-collapse">
           <tbody>
             <tr className="border-b">
-              <th className="p-2 bg-gray-50 text-left font-medium w-1/3">请求 URL</th>
+              <th className="p-2 bg-gray-50 text-left font-medium w-1/3">{chrome.i18n.getMessage("request_url")}</th>
               <td className="p-2 break-all">
                 {typeof selectedRequest.url === "string"
                   ? selectedRequest.url
@@ -193,7 +193,7 @@ const ResponseTab: React.FC<{
               </td>
             </tr>
             <tr className="border-b">
-              <th className="p-2 bg-gray-50 text-left font-medium">请求方法</th>
+              <th className="p-2 bg-gray-50 text-left font-medium">{chrome.i18n.getMessage("request_method")}</th>
               <td className="p-2">
                 {typeof selectedRequest.method === "string"
                   ? selectedRequest.method
@@ -202,7 +202,7 @@ const ResponseTab: React.FC<{
             </tr>
             {selectedRequest.responseTime && (
               <tr>
-                <th className="p-2 bg-gray-50 text-left font-medium">Response Time</th>
+                <th className="p-2 bg-gray-50 text-left font-medium">{chrome.i18n.getMessage("response_time")}</th>
                 <td className="p-2">
                   {typeof selectedRequest.responseTime === "number"
                     ? selectedRequest.responseTime.toFixed(2)
@@ -214,7 +214,7 @@ const ResponseTab: React.FC<{
         </table>
       </div>
 
-      <h3 className="text-lg font-semibold mb-2">Response Headers</h3>
+      <h3 className="text-lg font-semibold mb-2">{chrome.i18n.getMessage("response_headers")}</h3>
       <div className="border rounded-md mb-4 overflow-hidden">
         <table className="w-full border-collapse">
           <tbody>
@@ -235,7 +235,7 @@ const ResponseTab: React.FC<{
         </table>
       </div>
 
-      <h3 className="text-lg font-semibold mb-2">Response Content</h3>
+      <h3 className="text-lg font-semibold mb-2">{chrome.i18n.getMessage("response_content")}</h3>
       {selectedRequest.responseContent ? (
         <pre className="bg-gray-50 p-3 rounded-md overflow-auto max-h-60 text-sm">
           {typeof selectedRequest.responseContent === "string"
@@ -250,11 +250,11 @@ const ResponseTab: React.FC<{
             <div className="text-center py-4">
               <p className="mb-3 text-gray-600">
                 {selectedRequest.responseType === "image"
-                  ? "Image content cannot be displayed directly"
-                  : "Due to browser security restrictions, response body content cannot be accessed directly."}
+                  ? chrome.i18n.getMessage("image_not_displayable")
+                  : chrome.i18n.getMessage("response_body_restriction")}
               </p>
               <Button
-                label="Try to get content"
+                label={chrome.i18n.getMessage("try_get_content")}
                 onClick={() => fetchResponseContent(selectedRequest.url)}
                 className="p-button-outlined"
               />
@@ -287,11 +287,11 @@ const RuleTab: React.FC<{
 
   return (
     <div className="p-2">
-      <h3 className="text-lg font-semibold mb-3">Edit Interception Rule</h3>
+      <h3 className="text-lg font-semibold mb-3">{chrome.i18n.getMessage("edit_rule")}</h3>
       
       <div className="field mb-4">
         <label htmlFor="rule-url" className="block text-sm font-medium mb-2">
-          URL Pattern:
+          {chrome.i18n.getMessage("url_pattern")}
         </label>
         <InputText
           id="rule-url"
@@ -303,7 +303,7 @@ const RuleTab: React.FC<{
       
       <div className="field mb-4">
         <label htmlFor="match-type" className="block text-sm font-medium mb-2">
-          Match Type:
+          {chrome.i18n.getMessage("match_type")}
         </label>
         <Dropdown
           id="match-type"
@@ -316,7 +316,7 @@ const RuleTab: React.FC<{
       
       <div className="field mb-4">
         <label htmlFor="response-content" className="block text-sm font-medium mb-2">
-          Custom Response (JSON):
+          {chrome.i18n.getMessage("custom_response_json")}
         </label>
         <InputTextarea
           id="response-content"
@@ -330,7 +330,7 @@ const RuleTab: React.FC<{
       
       <div className="flex justify-end">
         <Button
-          label="Save Rule"
+          label={chrome.i18n.getMessage("save_rule")}
           icon="pi pi-save"
           className="p-button-success"
           onClick={handleRuleSave}

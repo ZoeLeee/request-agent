@@ -1,8 +1,8 @@
 {
   "name": "request-agent",
-  "displayName": "RequestMan",
+  "displayName": "__MSG_ext_name__",
   "version": "0.0.2",
-  "description": "基于自定义规则拦截请求并返回自定义响应 | Intercept requests with user-defined rules and return custom responses",
+  "description": "__MSG_ext_desc__",
   "author": "Joe Lee",
   "scripts": {
     "clean": "rimraf build",
@@ -34,6 +34,7 @@
     "typescript": "5.3.3"
   },
   "manifest": {
+    "default_locale": "en",
     "host_permissions": [
       "https://*/*"
     ],
@@ -49,7 +50,9 @@
       "service_worker": "background.ts"
     },
     "action": {
-      "default_title": "Request Agent"
-    }
+      "default_title": "__MSG_ext_name__"
+    },
+    "name": "__MSG_ext_name__",
+    "description": "__MSG_ext_desc__"
   }
 }
