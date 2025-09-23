@@ -299,11 +299,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           rule.url === newRule.url && rule.matchType === newRule.matchType
       )
 
-      if (selectedRule) {
-        // Clear selected rule
+      // Determine whether we are editing an existing rule
+      const isEditingExisting =
+        !!selectedRule &&
+        !!selectedRule.id &&
+        rules.some((rule) => rule.id === selectedRule.id)
+
+      if (isEditingExisting) {
+        // Update the matched existing rule by id
         updatedRules = rules.map((rule) =>
-          rule.id === selectedRule.id
-            ? { ...newRule, id: selectedRule.id }
+          rule.id === (selectedRule as Rule).id
+            ? { ...newRule, id: (selectedRule as Rule).id }
             : rule
         )
       } else if (existingRuleIndex !== -1) {
@@ -313,7 +319,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         )
       } else {
         // Add new rule
-        const newRuleWithId = {
+        const newRuleWithId: Rule = {
           ...newRule,
           id: Date.now().toString()
         }
@@ -327,6 +333,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       setRules(updatedRules)
       setSelectedRule(null)
       setActiveTab("")
+
+      // Ensure UI reflects latest from storage
+      await refreshRules()
 
       console.log("Rule saved:", newRule)
     } catch (error) {

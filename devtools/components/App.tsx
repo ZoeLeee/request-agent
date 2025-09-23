@@ -1,4 +1,5 @@
 import React from "react";
+import type { Rule } from "./types";
 import { useAppContext } from "../context/AppContext";
 
 import Toolbar from "./Toolbar";
@@ -116,7 +117,9 @@ const App: React.FC = () => {
                 handleDebugToggle={handleDebugToggle}
                 showRulesClear={true}
                 onNewRule={() => {
-                  setNewRule({ id: "", url: "", matchType: "exact", response: "" });
+                  const draft: Rule = { id: "", url: "", matchType: "exact", response: "" };
+                  setNewRule(draft);
+                  setSelectedRule(draft);
                   setActiveTab("rule");
                 }}
               />
@@ -131,7 +134,9 @@ const App: React.FC = () => {
                     setActiveTab("rule");
                   }}
                   onNewRule={() => {
-                    setNewRule({ id: "", url: "", matchType: "exact", response: "" });
+                    const draft: Rule = { id: "", url: "", matchType: "exact", response: "" };
+                    setNewRule(draft);
+                    setSelectedRule(draft);
                     setActiveTab("rule");
                   }}
                 />
