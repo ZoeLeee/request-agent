@@ -60,11 +60,22 @@ The easiest way to deploy your Plasmo extension is to use the built-in [bpp](htt
 
 ## Usage Instructions
 
-1. After installing the extension, click the extension icon to open the monitoring interface
-2. View all network requests in the left panel
-3. Click on a request to view detailed information on the right
-4. Switch to the "Rules" tab to create interception rules
-5. Set URL matching pattern, match type, and custom response
-6. Click "Save Rule" to apply the new rule
+1. Open DevTools (F12) and switch to the "Request Agent" panel.
+2. In the toolbar, click "Enable" to turn on Debug Mode to allow request interception and logging.
+3. Use the left vertical navigation to switch views:
+   - Network: real-time request list, with top filter input and "Clear Requests" action
+   - Rules: manage interception rules, with filter, "New Rule" and "Clear Rules"
+4. In Network view:
+   - Click any request to see details (Headers, Response, etc.)
+   - From details, quickly prefill a new rule based on this request (URL auto-filled)
+5. In Rules view:
+   - Create or edit a rule by setting "URL Pattern", "Match Type (exact/contains/regex)", and "Response Content" (prefer JSON)
+   - Click "Save Rule"; when matched, requests will be intercepted and return the custom response
+6. Debug Mode notes:
+   - The mode auto-disables when the panel closes or on connection errors
+   - Errors are shown via a top-right Toast notification
+7. Notes:
+   - Fetching response content directly may be limited by browser security policies for cross-origin resources
+   - Headers like host/origin are filtered to avoid copying invalid headers
 
 
