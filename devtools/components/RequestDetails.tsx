@@ -6,6 +6,7 @@ import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { InputTextarea } from "primereact/inputtextarea";
+import { InputNumber } from "primereact/inputnumber";
 
 interface RequestDetailsProps {
   selectedRequest: RequestInfo;
@@ -314,6 +315,39 @@ const RuleTab: React.FC<{
         />
       </div>
       
+      <div className="field mb-4">
+        <label htmlFor="rd-response-status" className="block text-sm font-medium mb-2">Response Status</label>
+        <div className="flex flex-column gap-2">
+          <InputNumber
+            id="rd-response-status"
+            value={newRule.status ?? 200}
+            onValueChange={(e) => setNewRule({ ...newRule, status: e.value ?? 200 })}
+            placeholder="HTTP Status Code"
+            className="w-full"
+            min={100}
+            max={599}
+            showButtons={false}
+          />
+          <div className="flex gap-2 flex-wrap">
+            {[200, 201, 204, 400, 401, 403, 404, 500, 502, 503].map((code) => (
+              <Button
+                key={code}
+                label={String(code)}
+                size="small"
+                severity={
+                  code < 300 ? "success" :
+                  code < 400 ? "info" :
+                  code < 500 ? "warning" : "danger"
+                }
+                outlined={(newRule.status ?? 200) !== code}
+                onClick={() => setNewRule({ ...newRule, status: code })}
+                className="p-button-sm"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="field mb-4">
         <label htmlFor="response-content" className="block text-sm font-medium mb-2">
           {chrome.i18n.getMessage("custom_response_json")}

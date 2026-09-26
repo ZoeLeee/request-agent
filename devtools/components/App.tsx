@@ -117,7 +117,7 @@ const App: React.FC = () => {
                 handleDebugToggle={handleDebugToggle}
                 showRulesClear={true}
                 onNewRule={() => {
-                  const draft: Rule = { id: "", url: "", matchType: "exact", response: "" };
+                  const draft: Rule = { id: "", url: "", matchType: "exact", response: "", status: 200 };
                   setNewRule(draft);
                   setSelectedRule(draft);
                   setActiveTab("rule");
@@ -134,7 +134,7 @@ const App: React.FC = () => {
                     setActiveTab("rule");
                   }}
                   onNewRule={() => {
-                    const draft: Rule = { id: "", url: "", matchType: "exact", response: "" };
+                    const draft: Rule = { id: "", url: "", matchType: "exact", response: "", status: 200 };
                     setNewRule(draft);
                     setSelectedRule(draft);
                     setActiveTab("rule");

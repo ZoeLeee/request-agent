@@ -155,7 +155,7 @@ export async function handleDebuggerEvent(
         (rule.matchType === "regex" && new RegExp(rule.url).test(request.url))
     )
 
-    if (matchedRule && matchedRule.response) {
+    if (matchedRule && (matchedRule.response || matchedRule.status)) {
       try {
         console.log(`找到匹配的规则，拦截请求: ${request.url}`)
 
@@ -177,6 +177,21 @@ export async function handleDebuggerEvent(
           }
         ]
 
+        // 确定使用的状态码
+        const statusCode = matchedRule.status ?? 200
+        const statusText =
+          statusCode >= 500
+            ? "Internal Server Error"
+            : statusCode >= 400
+              ? "Bad Request"
+              : statusCode >= 300
+                ? "Redirect"
+                : statusCode === 201
+                  ? "Created"
+                  : statusCode === 204
+                    ? "No Content"
+                    : "OK"
+
         // 记录请求信息
         const requestInfo: RequestInfo = {
           id: requestId,
@@ -190,23 +205,25 @@ export async function handleDebuggerEvent(
           initiator: request.headers["Origin"] || "",
           requestHeaders: {},
           responseContent: matchedRule.response,
-          responseStatus: 200,
-          responseStatusText: "OK",
+          responseStatus: statusCode,
+          responseStatusText: statusText,
           responseType: "json",
           responseTime: 0,
           shouldIntercept: true,
-          customResponse: matchedRule.response
+          customResponse: matchedRule.response,
+          customStatus: statusCode
         }
 
         // 将请求信息添加到请求数组中
         requests.push(requestInfo)
 
-        // 使用简单的纯文本响应
+        // 使用自定义状态码和响应体
         await chrome.debugger.sendCommand({ tabId }, "Fetch.fulfillRequest", {
           requestId,
-          responseCode: 200,
+          responseCode: statusCode,
+          responsePhrase: statusText,
           responseHeaders: responseHeaders,
-          body: btoa(matchedRule.response) // 简单的 Base64 编码
+          body: btoa(unescape(encodeURIComponent(matchedRule.response)))
         })
 
         console.log(`成功拦截并修改响应: ${requestId}`)

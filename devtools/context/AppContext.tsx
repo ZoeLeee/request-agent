@@ -105,7 +105,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     id: "",
     url: "",
     matchType: "exact",
-    response: ""
+    response: "",
+    status: 200
   })
   // Toast component reference
   const toast = useRef<any>(null)
@@ -260,7 +261,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       id: Date.now().toString(),
       url: request.url,
       matchType: "exact",
-      response: ""
+      response: "",
+      status: 200
     })
   }
 
@@ -417,7 +419,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           if (selectedRequest) {
             selectedRequest.responseContent = jsonString
             selectedRequest.responseType = "json"
-            selectedRequest.responseStatus = 200
+            selectedRequest.responseStatus = selectedRequest.customStatus ?? 200
             selectedRequest.responseStatusText = "OK"
             selectedRequest.responseTime = 0
           }
@@ -431,7 +433,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           if (selectedRequest) {
             selectedRequest.responseContent = selectedRequest.customResponse
             selectedRequest.responseType = "text"
-            selectedRequest.responseStatus = 200
+            selectedRequest.responseStatus = selectedRequest.customStatus ?? 200
             selectedRequest.responseStatusText = "OK"
             selectedRequest.responseTime = 0
           }

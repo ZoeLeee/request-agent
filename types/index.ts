@@ -38,6 +38,7 @@ export interface RequestInfo {
   // 自定义响应字段
   shouldIntercept?: boolean
   customResponse?: string
+  customStatus?: number
 }
 
 export interface Rule {
@@ -45,4 +46,5 @@ export interface Rule {
   url: string
   matchType: "exact" | "contains" | "regex"
   response: string
+  status?: number
 }

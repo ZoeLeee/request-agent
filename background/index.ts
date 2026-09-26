@@ -139,6 +139,7 @@ chrome.webRequest.onBeforeRequest.addListener(
       // 将自定义响应存储到请求信息中
       requestInfo.shouldIntercept = true
       requestInfo.customResponse = matchedRule.response
+      requestInfo.customStatus = matchedRule.status ?? 200
     }
   },
   { urls: ["<all_urls>"] }

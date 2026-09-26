@@ -45,4 +45,5 @@ export interface Rule {
   url: string
   matchType: "exact" | "contains" | "regex"
   response: string
+  status?: number
 }
